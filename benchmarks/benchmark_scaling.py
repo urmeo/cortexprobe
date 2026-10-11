@@ -77,10 +77,10 @@ def main(argv: list[str] | None = None) -> None:
     apertures = sequence.as_float()
     fit_config = FitConfig(grid_size=10, sigma_bounds=(1.0, SIGMA_HIGH))
 
-    setup, fitter = time_call(PRFFitter, grid, apertures, fit_config)
+    setup_seconds, fitter = time_call(PRFFitter, grid, apertures, fit_config)
     print(
         f"grid {arguments.resolution}px | {fitter.n_frames} frames | "
-        f"{len(fitter.candidates)} candidates | setup {setup * 1000:.0f} ms\n"
+        f"{len(fitter.candidates)} candidates | setup {setup_seconds * 1000:.0f} ms\n"
     )
 
     counts = [count for count in UNIT_COUNTS if count <= arguments.max_units]

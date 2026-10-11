@@ -14,6 +14,9 @@ from cortexprobe.config import (
     RunConfig,
     StimulusConfig,
 )
+from cortexprobe.geometry import Grid
+from cortexprobe.prf.fit import MIN_ON_GRID_VOLUME
+from cortexprobe.prf.model import GaussianReceptiveField
 
 
 @pytest.mark.parametrize(
@@ -63,7 +66,6 @@ def test_model_config_rejects_invalid_values(overrides, message) -> None:
 
 
 def test_sigma_floor_under_a_pixel_is_rejected_with_a_reason() -> None:
-    """Reject sigma bounds below one pixel."""
     with pytest.raises(ConfigError, match="at least 1 pixel"):
         FitConfig(sigma_bounds=(0.2, 10.0))
 
@@ -86,11 +88,6 @@ def test_fit_config_rejects_invalid_values(overrides, message) -> None:
 
 
 def test_default_sigma_ceiling_suits_the_default_stimulus() -> None:
-    """The shipped defaults must be usable together, not merely valid apart."""
-    from cortexprobe.geometry import Grid
-    from cortexprobe.prf.fit import MIN_ON_GRID_VOLUME
-    from cortexprobe.prf.model import GaussianReceptiveField
-
     config = RunConfig()
     grid = Grid(config.stimulus.resolution)
     _, sigma_high = config.fit.sigma_bounds
@@ -101,7 +98,6 @@ def test_default_sigma_ceiling_suits_the_default_stimulus() -> None:
 
 
 def test_tuples_survive_a_json_round_trip() -> None:
-    """JSON has no tuple. Without restoration a round trip would change field types."""
     config = StimulusConfig(directions=(0, 45, 90))
 
     restored = StimulusConfig.from_dict(json.loads(json.dumps(config.to_dict())))
@@ -154,7 +150,6 @@ def test_digest_responds_to_the_seed() -> None:
 
 
 def test_digest_responds_to_a_nested_change() -> None:
-    """A digest that ignored nested sections would identify two different runs alike."""
     baseline = RunConfig()
     changed = RunConfig(fit=FitConfig(grid_size=baseline.fit.grid_size + 1))
 
@@ -173,9 +168,10 @@ def test_digest_survives_a_round_trip(tmp_path) -> None:
     path = tmp_path / "run.json"
 
     config.save(path)
+    restored = RunConfig.load(path)
 
-    assert RunConfig.load(path) == config
-    assert RunConfig.load(path).digest() == config.digest()
+    assert restored == config
+    assert restored.digest() == config.digest()
 
 
 def test_saved_configuration_is_readable_json(tmp_path) -> None:

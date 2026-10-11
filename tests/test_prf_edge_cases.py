@@ -2,13 +2,24 @@
 
 from __future__ import annotations
 
+import re
+
 import numpy as np
 import pytest
 
-from cortexprobe.config import FitConfig
+import cortexprobe.prf.fit as fit_module
+from cortexprobe.config import ConfigError, FitConfig
 from cortexprobe.geometry import Grid
-from cortexprobe.prf.fit import BOUND_TOLERANCE, PRFFitter, UnitFit
-from cortexprobe.prf.model import GaussianReceptiveField
+from cortexprobe.prf.fit import (
+    BOUND_TOLERANCE,
+    MIN_ON_GRID_VOLUME,
+    RESOLUTION_PER_SIGMA,
+    PRFFitter,
+    UnitFit,
+    _r_squared,
+    _standard_errors,
+)
+from cortexprobe.prf.model import GaussianReceptiveField, predict
 
 from .conftest import synthesise
 
@@ -111,7 +122,7 @@ def test_receptive_field_far_outside_field_is_finite(grid) -> None:
 
 
 def test_a_clean_fit_to_noise_converges_but_is_not_accepted(fitter) -> None:
-    """The distinction that matters: the numerics worked, the answer is uninteresting."""
+    """Optimizer convergence alone does not meet the acceptance criteria."""
     response = np.random.default_rng(11).normal(size=fitter.n_frames)
 
     fit = fitter.fit_unit(response)
@@ -134,7 +145,7 @@ def test_sigma_pinned_at_the_ceiling_is_not_accepted(grid, apertures) -> None:
 
 
 def test_a_centre_at_the_field_edge_is_still_accepted(grid, apertures) -> None:
-    """Receptive fields really do sit near the field boundary; that is a measurement."""
+    """A center bound does not disqualify a fit with an unpinned sigma."""
     fitter = PRFFitter(grid, apertures, FitConfig(grid_size=10, sigma_bounds=(1.0, 10.0)))
 
     fit = fitter.fit_unit(synthesise(grid, apertures, (32.0, 0.0, 4.0)))
@@ -145,8 +156,6 @@ def test_a_centre_at_the_field_edge_is_still_accepted(grid, apertures) -> None:
 
 
 def test_at_bound_is_the_disjunction_of_the_three_flags() -> None:
-    from cortexprobe.prf.fit import UnitFit
-
     base = {
         "x0": 0.0,
         "y0": 0.0,
@@ -165,9 +174,7 @@ def test_at_bound_is_the_disjunction_of_the_three_flags() -> None:
 
 
 def test_a_fit_without_a_threshold_is_never_accepted() -> None:
-    """Fail closed: an assembled UnitFit must not pass for a measured pRF by default."""
-    from cortexprobe.prf.fit import UnitFit
-
+    """A manually constructed fit needs an explicit acceptance threshold."""
     fit = UnitFit(0.0, 0.0, 1.0, 1.0, 0.0, r2=1.0, converged=True, n_fev=1)
 
     assert fit.converged
@@ -198,16 +205,12 @@ def test_a_suppressed_unit_is_not_accepted_as_a_prf(fitter, grid, apertures) -> 
 
 def test_sigma_floor_below_the_pixel_pitch_is_rejected() -> None:
     """The lower guard: an under-sampled Gaussian silently loses its unit volume."""
-    from cortexprobe.config import ConfigError
-
     with pytest.raises(ConfigError, match="at least 1 pixel"):
         FitConfig(sigma_bounds=(0.5, 10.0))
 
 
 def test_sigma_ceiling_the_grid_cannot_represent_is_rejected(grid, apertures) -> None:
     """The upper guard: a Gaussian wider than about resolution / 6 is truncated by the field."""
-    from cortexprobe.config import ConfigError
-
     with pytest.raises(ConfigError, match="keeps only"):
         PRFFitter(grid, apertures, FitConfig(grid_size=8, sigma_bounds=(1.0, 20.0)))
 
@@ -218,8 +221,6 @@ def test_a_sigma_ceiling_the_grid_can_represent_is_accepted(grid, apertures) -> 
 
 @pytest.mark.parametrize("sigma", [1.0, 5.0, 10.0])
 def test_unit_volume_survives_across_the_admissible_range(grid, sigma) -> None:
-    from cortexprobe.prf.fit import MIN_ON_GRID_VOLUME
-
     weights = GaussianReceptiveField(0.0, 0.0, sigma).weights(grid)
 
     assert weights[grid.field_mask].sum() >= MIN_ON_GRID_VOLUME
@@ -227,20 +228,16 @@ def test_unit_volume_survives_across_the_admissible_range(grid, sigma) -> None:
 
 def test_unit_volume_is_lost_above_the_admissible_range(grid) -> None:
     """Pins the reason the ceiling exists, so removing the guard fails a test."""
-    from cortexprobe.prf.fit import MIN_ON_GRID_VOLUME
-
     weights = GaussianReceptiveField(0.0, 0.0, 20.0).weights(grid)
 
     assert weights[grid.field_mask].sum() < MIN_ON_GRID_VOLUME
 
 
 def test_a_two_lobed_unit_is_flagged_as_misspecified(fitter, grid, apertures) -> None:
-    """One lobe wins the fit, the sigma belongs to neither, and R2 alone looks respectable."""
+    """A two-lobe response leaves structure after a single-Gaussian fit."""
     lobes = GaussianReceptiveField(14.0, 0.0, 3.0).weights(grid) + GaussianReceptiveField(
         -14.0, 0.0, 3.0
     ).weights(grid)
-    from cortexprobe.prf.model import predict
-
     response = 3.0 * predict(lobes, apertures) + 0.5
 
     fit = fitter.fit_unit(response)
@@ -260,8 +257,6 @@ def test_a_single_lobed_unit_is_not_flagged(fitter, grid, apertures) -> None:
 @pytest.mark.slow
 def test_misspecification_separates_single_from_two_lobed_units(fitter, grid, apertures) -> None:
     """Verify the recorded single- and two-lobe diagnostic ranges across noise levels."""
-    from cortexprobe.prf.model import predict
-
     geometries = [
         GaussianReceptiveField(14.0, 0.0, 3.0).weights(grid)
         + GaussianReceptiveField(-14.0, 0.0, 3.0).weights(grid),
@@ -297,8 +292,6 @@ def test_misspecification_separates_single_from_two_lobed_units(fitter, grid, ap
 
 def test_misspecification_does_not_change_acceptance(fitter, grid, apertures) -> None:
     """The diagnostic is reported, not enforced; downstream analysis states its own cut."""
-    from cortexprobe.prf.model import predict
-
     lobes = GaussianReceptiveField(14.0, 0.0, 3.0).weights(grid) + GaussianReceptiveField(
         -14.0, 0.0, 3.0
     ).weights(grid)
@@ -317,21 +310,17 @@ def test_a_perfect_fit_leaves_no_residual_structure(fitter, grid, apertures) -> 
     assert fit.second_field_r2 < 0.01
 
 
-def test_unfittable_response_reports_no_second_field(fitter) -> None:
+def test_unfittable_response_reports_no_second_field() -> None:
     assert np.isnan(UnitFit.failed().second_field_r2)
 
 
 def test_r_squared_of_a_constant_response_is_zero() -> None:
-    from cortexprobe.prf.fit import _r_squared
-
     constant = np.full(10, 3.0)
 
     assert _r_squared(constant, constant) == 0.0
 
 
 def test_standard_errors_are_undefined_without_degrees_of_freedom() -> None:
-    from cortexprobe.prf.fit import _standard_errors
-
     errors = _standard_errors(np.ones((3, 3)), 1.0, n_independent=3)
 
     assert all(np.isnan(error) for error in errors)
@@ -339,8 +328,6 @@ def test_standard_errors_are_undefined_without_degrees_of_freedom() -> None:
 
 def test_standard_errors_are_undefined_when_the_cost_is_not_finite() -> None:
     """Undefined errors are reported as undefined, never as a number."""
-    from cortexprobe.prf.fit import _standard_errors
-
     with np.errstate(invalid="ignore"):
         errors = _standard_errors(np.zeros((20, 3)), float("inf"), n_independent=20)
 
@@ -377,7 +364,6 @@ def test_an_optimiser_failure_is_reported_as_an_unfitted_unit(
     monkeypatch, fitter, grid, apertures
 ) -> None:
     """A pathological unit must not propagate a numerical exception to the caller."""
-    import cortexprobe.prf.fit as fit_module
 
     def explode(*args, **kwargs):
         raise np.linalg.LinAlgError("SVD did not converge")
@@ -424,10 +410,6 @@ def test_confidence_interval_accepts_every_fitted_parameter(
 @pytest.mark.parametrize("resolution", [32, 64, 96, 128, 160, 200])
 def test_sigma_ceiling_advice_works_at_every_resolution(resolution) -> None:
     """Check suggested sigma bounds against the volume tolerance and require even resolutions."""
-    import re
-
-    from cortexprobe.config import ConfigError
-
     wide = Grid(resolution)
     apertures = np.zeros((20, *wide.shape))
     over = resolution / 4.0
@@ -454,10 +436,6 @@ def test_the_sigma_ceiling_error_gives_advice_that_works(grid) -> None:
     the 2-D radial mass within 3 sigma is 0.9889, under the 0.99 tolerance, so the true ratio is
     about 6.1 rather than 6.
     """
-    import re
-
-    from cortexprobe.config import ConfigError
-
     apertures = np.zeros((20, *grid.shape))
     with pytest.raises(ConfigError) as raised:
         PRFFitter(grid, apertures, FitConfig(grid_size=5, sigma_bounds=(1.0, 20.0)))
@@ -477,9 +455,6 @@ def test_the_sigma_ceiling_error_gives_advice_that_works(grid) -> None:
 
 def test_a_sigma_of_exactly_resolution_over_six_is_rejected(grid) -> None:
     """The resolution/6 rule of thumb is slightly too generous; the guard is the authority."""
-    from cortexprobe.config import ConfigError
-    from cortexprobe.prf.fit import RESOLUTION_PER_SIGMA
-
     assert RESOLUTION_PER_SIGMA > 6.0
 
     with pytest.raises(ConfigError, match="keeps only"):

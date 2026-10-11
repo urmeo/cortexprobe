@@ -112,6 +112,19 @@ def test_check_rejects_a_manually_edited_validation_table(report_script, record,
     assert "tables do not match" in capsys.readouterr().out
 
 
+@pytest.mark.parametrize("replacement", [None, "invalid", [], {}, 10**400])
+@pytest.mark.parametrize("changed_report", ["fresh", "recorded"])
+def test_check_reports_invalid_measurement_drift(
+    report_script, record, capsys, replacement, changed_report
+):
+    document = marked_document(report_script, record)
+    fresh = copy.deepcopy(record)
+    changed = fresh if changed_report == "fresh" else record
+    changed["recovery"]["rows"][1]["position_mean"] = replacement
+    assert report_script.run_check(fresh, record, document) == 1
+    assert "recovery.rows.1.position_mean" in capsys.readouterr().out
+
+
 def test_check_ignores_separately_recorded_hardware_provenance(report_script, record):
     fresh = copy.deepcopy(record)
     fresh.update(

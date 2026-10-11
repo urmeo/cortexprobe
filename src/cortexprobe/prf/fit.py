@@ -20,13 +20,9 @@ from ..geometry import Grid
 from .model import GaussianReceptiveField, design_matrix, predict
 
 N_PARAMETERS = 5
-
 FITTED_PARAMETERS = ("x0", "y0", "sigma")
-
 BOUND_TOLERANCE = 1e-3
-
 MIN_ON_GRID_VOLUME = 0.99
-
 RESOLUTION_PER_SIGMA = 6.1
 
 
@@ -64,7 +60,16 @@ class UnitFit:
     def failed(cls) -> UnitFit:
         """A unit that could not be fitted. Never reported as a pRF."""
         nan = float("nan")
-        return cls(nan, nan, nan, nan, nan, 0.0, False, 0)
+        return cls(
+            x0=nan,
+            y0=nan,
+            sigma=nan,
+            beta=nan,
+            baseline=nan,
+            r2=0.0,
+            converged=False,
+            n_fev=0,
+        )
 
     @property
     def eccentricity(self) -> float:
@@ -245,16 +250,13 @@ class PRFFitter:
         centres = np.linspace(-radius, radius, self.config.grid_size)
         sigmas = np.geomspace(sigma_low, sigma_high, n_sigma)
 
-        candidates = [
+        return [
             GaussianReceptiveField(float(x), float(y), float(sigma))
             for x in centres
             for y in centres
             if np.hypot(x, y) <= radius
             for sigma in sigmas
         ]
-        if not candidates:
-            raise ValueError("candidate grid is empty; check grid_size and sigma_bounds")
-        return candidates
 
     def _bounds_hit(self, x0: float, y0: float, sigma: float) -> tuple[bool, bool, bool]:
         """Flag each fitted parameter within the tolerance of either search bound."""
@@ -358,4 +360,4 @@ class PRFFitter:
             raise ValueError("activations must have shape (frames, units)")
         if activations.shape[0] != self.n_frames:
             raise ValueError("activations must have one row per stimulus frame")
-        return [self.fit_unit(activations[:, unit]) for unit in range(activations.shape[1])]
+        return [self.fit_unit(response) for response in activations.T]

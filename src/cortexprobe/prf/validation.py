@@ -133,4 +133,4 @@ class CrossValidator:
             raise ValueError("activations must have shape (frames, units)")
         if activations.shape[0] != len(self.apertures):
             raise ValueError("activations must have one row per stimulus frame")
-        return [self.validate_unit(activations[:, unit]) for unit in range(activations.shape[1])]
+        return [self.validate_unit(response) for response in activations.T]
