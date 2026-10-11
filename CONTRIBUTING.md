@@ -33,10 +33,13 @@ python scripts/generate_figures.py
 
 Use `python scripts/generate_validation_report.py --runtime` only when you
 intend to refresh hardware timings. When all deterministic measurements still
-reproduce, the report keeps its original values and provenance. The report check does not compare
-figure pixels or remeasure timings. See [Validation](docs/validation.md) for
+reproduce, the report keeps its original values and provenance. The report
+check does not compare figure pixels or remeasure timings. See [Validation](docs/validation.md) for
 experiment conditions and comparison tolerances.
 
-Keep changes focused. Describe the affected behavior in commit messages and
-pull requests, and include the checks you ran. Preserve documented limits and
-report unmeasured behavior as unmeasured.
+Keep changes focused. Use short commit messages that name the update, such as
+`updated readme`, `updated results`, or `updated visuals`. Describe the behavior
+and checks in the pull request. Preserve documented limits and report
+unmeasured behavior as unmeasured.
+
+The project contributor is `urmeo`. Keep commits attributed to that account.

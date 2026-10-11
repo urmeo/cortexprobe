@@ -1,6 +1,6 @@
 """Measure the synthetic validation tables in docs/validation.md.
 
-Load configs/validation.json, write outputs/validation.json and update four marked tables.
+Load configs/validation.json, write results/validation.json and update four marked tables.
 --check compares deterministic measurements within tolerance and verifies those tables,
 without writing files. It does not check supplemental figure pixels or remeasure timings.
 
@@ -32,7 +32,7 @@ from cortexprobe.prf.validation import CrossValidator
 from cortexprobe.stimuli import build_apertures
 
 ROOT = Path(__file__).resolve().parent.parent
-OUTPUTS = ROOT / "outputs"
+RESULTS = ROOT / "results"
 
 CONFIG = RunConfig.load(ROOT / "configs" / "validation.json")
 
@@ -471,7 +471,7 @@ def main(argv: list[str] | None = None) -> int:
     apertures = sequence.as_float()
     fitter = PRFFitter(grid, apertures, CONFIG.fit)
 
-    previous_path = OUTPUTS / "validation.json"
+    previous_path = RESULTS / "validation.json"
     previous = json.loads(previous_path.read_text()) if previous_path.exists() else {}
 
     report: dict[str, Any] = {
@@ -521,7 +521,7 @@ def main(argv: list[str] | None = None) -> int:
     blocks = render(report)
     spliced = splice(document, blocks)
 
-    OUTPUTS.mkdir(exist_ok=True)
+    RESULTS.mkdir(exist_ok=True)
     previous_path.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
 
     document_path.write_text(spliced)

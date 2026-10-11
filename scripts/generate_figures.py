@@ -1,6 +1,6 @@
-"""Regenerate the figures in docs/validation.md.
+"""Regenerate project and validation figures in docs/figures/.
 
-Coverage and timing panels use outputs/validation.json; other panels run supplemental
+Coverage and timing panels use results/validation.json; other panels run supplemental
 synthetic diagnostics. A matching configuration digest is required. Run the report's
 --check first to verify recorded numbers; it does not compare figure pixels.
 Needs the ``viz`` extra::
@@ -22,6 +22,8 @@ matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.colors import ListedColormap
+from matplotlib.patches import FancyArrowPatch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -30,9 +32,9 @@ from generate_validation_report import (
     CONFIG,
     CV_SEEDS,
     GROUND_TRUTH,
-    OUTPUTS,
     RECOVERY_NOISE,
     RECOVERY_SEED,
+    RESULTS,
     SPLIT_SEED,
     UNCERTAINTY_NOISE,
     UNCERTAINTY_SEED,
@@ -45,14 +47,15 @@ from cortexprobe.config import StimulusConfig
 from cortexprobe.geometry import Grid
 from cortexprobe.prf.fit import MIN_ON_GRID_VOLUME, RESOLUTION_PER_SIGMA, PRFFitter
 from cortexprobe.prf.model import GaussianReceptiveField, predict
-from cortexprobe.prf.validation import CrossValidator
+from cortexprobe.prf.validation import CrossValidator, LeaveOneGroupOut
 from cortexprobe.stimuli import build_apertures, frame_similarity
 
-FIGURES = OUTPUTS
+FIGURES = Path(__file__).resolve().parent.parent / "docs" / "figures"
 INK = "#1b1f23"
 ACCENT = "#2f6f9f"
 WARN = "#b4442e"
 GOOD = "#3f7d58"
+EXAMPLE_NOISE = 0.2
 
 plt.rcParams.update(
     {
@@ -85,7 +88,7 @@ def worst_cross_group_similarity(apertures, groups) -> float:
 
 def load_recorded_report() -> dict:
     """Reject absent or stale validation records before drawing figures."""
-    path = OUTPUTS / "validation.json"
+    path = RESULTS / "validation.json"
     try:
         report = json.loads(path.read_text())
     except (OSError, json.JSONDecodeError) as error:
@@ -99,6 +102,276 @@ def pixel_coordinates(grid: Grid, x0: float, y0: float) -> tuple[float, float]:
     """Convert upward-y field coordinates to imshow's column and downward row."""
     origin = (grid.resolution - 1) / 2
     return x0 + origin, origin - y0
+
+
+def synthetic_fit_example():
+    """One reproducible noisy response for the pipeline and prediction figures."""
+    grid = Grid(CONFIG.stimulus.resolution)
+    sequence = build_apertures(CONFIG.stimulus, "bar")
+    apertures = sequence.as_float()
+    clean = synthesise(grid, apertures, UNCERTAINTY_TRUTH)
+    response = synthesise(
+        grid, apertures, UNCERTAINTY_TRUTH, noise=EXAMPLE_NOISE, seed=RECOVERY_SEED
+    )
+    fit = PRFFitter(grid, apertures, CONFIG.fit).fit_unit(response)
+    return grid, sequence, apertures, clean, response, fit
+
+
+def figure_pipeline() -> None:
+    """Show the synthetic experiment from stimulus masks to measured outputs."""
+    grid, sequence, apertures, _, response, fit = synthetic_fit_example()
+    fig, axes = plt.subplots(1, 5, figsize=(12.5, 3.5))
+    fig.subplots_adjust(left=0.035, right=0.98, top=0.70, bottom=0.28, wspace=0.42)
+    titles = (
+        "Build apertures",
+        "Create response",
+        "Fit a Gaussian",
+        "Hold out groups",
+        "Inspect results",
+    )
+    captions = (
+        f"{sequence.n_frames} retained bar frames\n{grid.resolution} × {grid.resolution} pixels",
+        f"Known field + Gaussian noise\n{EXAMPLE_NOISE:.0%} signal SD; seed {RECOVERY_SEED}",
+        "Search → refine\nCenter, width, gain, baseline",
+        f"Refit {len(np.unique(sequence.group))} training folds\nScore each test group",
+        "Fit parameters and scores\nTables and diagnostic plots",
+    )
+    for index, (axis, title, caption) in enumerate(zip(axes, titles, captions)):
+        axis.set_title(f"{index + 1}. {title}", fontsize=10, fontweight="bold", pad=14)
+        position = axis.get_position()
+        fig.text((position.x0 + position.x1) / 2, 0.165, caption, ha="center", va="top", fontsize=9)
+        axis.set_xticks([])
+        axis.set_yticks([])
+        for spine in axis.spines.values():
+            spine.set_visible(False)
+
+    axes[0].imshow(apertures[14], cmap="gray_r", interpolation="nearest", aspect="auto")
+    axes[1].plot(response, color=ACCENT, lw=1.3)
+    axes[1].set_xlabel("frame", fontsize=8)
+    known = GaussianReceptiveField(*UNCERTAINTY_TRUTH).weights(grid)
+    fitted = GaussianReceptiveField(fit.x0, fit.y0, fit.sigma).weights(grid)
+    axes[2].imshow(known, cmap="magma", interpolation="nearest", aspect="auto")
+    axes[2].contour(fitted, levels=[fitted.max() * np.exp(-0.5)], colors=GOOD, linewidths=1.5)
+    axes[2].set_xlabel("known field + fitted 1σ contour", fontsize=8)
+
+    groups = np.unique(sequence.group)
+    axes[3].imshow(np.eye(len(groups)), cmap=ListedColormap(["#deebf7", "#e9b59b"]), aspect="auto")
+    axes[3].set_xticks(
+        np.arange(len(groups)), [f"G{i + 1}" for i in range(len(groups))], fontsize=7
+    )
+    axes[3].set_yticks(
+        np.arange(len(groups)), [f"F{i + 1}" for i in range(len(groups))], fontsize=7
+    )
+    axes[3].set_xlabel("blue: train · orange: test", fontsize=8)
+    axes[4].axis("off")
+    table = axes[4].table(
+        cellText=[
+            ["center (px)", f"{fit.x0:.1f}, {fit.y0:.1f}"],
+            ["width σ (px)", f"{fit.sigma:.2f}"],
+            ["in-sample R²", f"{fit.r2:.3f}"],
+        ],
+        colLabels=["full-data fit", "estimate"],
+        colWidths=[0.62, 0.38],
+        cellLoc="left",
+        loc="center",
+    )
+    table.auto_set_font_size(False)
+    table.set_fontsize(8)
+    table.scale(1.12, 1.7)
+    for (row, _), cell in table.get_celld().items():
+        cell.set_edgecolor("#d0d7de")
+        cell.set_facecolor("#eef3f8" if row == 0 else "white")
+
+    for left, right in zip(axes[:-1], axes[1:]):
+        first, second = left.get_position(), right.get_position()
+        fig.add_artist(
+            FancyArrowPatch(
+                (first.x1 + 0.007, 0.49),
+                (second.x0 - 0.007, 0.49),
+                transform=fig.transFigure,
+                arrowstyle="-|>",
+                mutation_scale=13,
+                color="#8c959f",
+                lw=1.2,
+            )
+        )
+    fig.suptitle(
+        "CortexProbe: a synthetic receptive-field experiment",
+        fontsize=14,
+        fontweight="bold",
+        y=0.96,
+    )
+    fig.text(
+        0.5,
+        0.025,
+        "Python · NumPy · SciPy   |   Synthetic inputs only; "
+        "no network runner or human-data validation",
+        ha="center",
+        fontsize=9,
+        color="#59636e",
+    )
+    fig.savefig(FIGURES / "pipeline.png", dpi=180)
+    plt.close(fig)
+
+
+def figure_fitted_response() -> None:
+    """Distinguish a full-data fit from predictions made by separate training folds."""
+    grid, sequence, apertures, clean, response, fit = synthetic_fit_example()
+    field = GaussianReceptiveField(fit.x0, fit.y0, fit.sigma)
+    full_prediction = fit.beta * predict(field.weights(grid), apertures) + fit.baseline
+    held_out_prediction = np.full_like(response, np.nan)
+    for train, test in LeaveOneGroupOut(sequence.group).splits():
+        fold_fit = PRFFitter(grid, apertures[train], CONFIG.fit).fit_unit(response[train])
+        fold_field = GaussianReceptiveField(fold_fit.x0, fold_fit.y0, fold_fit.sigma)
+        held_out_prediction[test] = (
+            fold_fit.beta * predict(fold_field.weights(grid), apertures[test]) + fold_fit.baseline
+        )
+    validated = CrossValidator(grid, apertures, sequence.group, CONFIG.fit).validate_unit(response)
+    frames = np.arange(len(response))
+    fig, axes = plt.subplots(2, 1, figsize=(10.0, 5.4), sharex=True, height_ratios=[2.5, 1])
+    axes[0].scatter(
+        frames,
+        response,
+        s=14,
+        color="#8c959f",
+        alpha=0.8,
+        label="observed synthetic response",
+        zorder=3,
+    )
+    axes[0].plot(frames, clean, color=INK, ls=":", lw=1.3, label="known clean response")
+    axes[0].plot(
+        frames,
+        full_prediction,
+        color=ACCENT,
+        lw=2,
+        label=f"fit to all frames (in-sample R² = {fit.r2:.3f})",
+    )
+    axes[0].plot(
+        frames,
+        held_out_prediction,
+        color=WARN,
+        ls="--",
+        lw=1.5,
+        label=f"held-out predictions (mean fold R² = {validated.cv_r2:.3f})",
+    )
+    axes[0].set_ylabel("response (arbitrary units)")
+    axes[0].legend(frameon=False, fontsize=8, ncol=2, loc="upper right")
+    axes[0].margins(y=0.25)
+    axes[1].axhline(0, color=INK, lw=0.9)
+    axes[1].plot(frames, response - full_prediction, color=ACCENT, lw=1.2)
+    axes[1].plot(frames, response - held_out_prediction, color=WARN, ls="--", lw=1.2)
+    axes[1].set_ylabel("residual")
+    axes[1].set_xlabel("retained frame")
+    for index, group in enumerate(np.unique(sequence.group)):
+        positions = frames[sequence.group == group]
+        for axis in axes:
+            axis.axvspan(
+                positions.min() - 0.5,
+                positions.max() + 0.5,
+                color=ACCENT,
+                alpha=0.035 if index % 2 == 0 else 0,
+            )
+        axes[1].text(
+            positions.mean(),
+            0.95,
+            f"group {group}",
+            transform=axes[1].get_xaxis_transform(),
+            va="top",
+            ha="center",
+            fontsize=7,
+            color="#59636e",
+        )
+    for axis in axes:
+        axis.grid(axis="y", color="#eef1f4", lw=1)
+        axis.set_axisbelow(True)
+        axis.set_xlim(-0.5, len(response) - 0.5)
+    fig.suptitle(
+        "Response curves: fit to all frames and predict held-out frames",
+        fontsize=12,
+        fontweight="bold",
+    )
+    fig.text(
+        0.5,
+        0.025,
+        f"Known center ({UNCERTAINTY_TRUTH[0]:g}, {UNCERTAINTY_TRUTH[1]:g}) px; "
+        f"σ = {UNCERTAINTY_TRUTH[2]:g} px. "
+        f"Gaussian noise = {EXAMPLE_NOISE:.0%} of clean signal SD; seed {RECOVERY_SEED}.\n"
+        f"Held-out curve: {len(np.unique(sequence.group))} separately trained models; "
+        "each keeps its parameters fixed on its test group.",
+        ha="center",
+        fontsize=8.5,
+    )
+    fig.tight_layout(rect=(0, 0.11, 1, 0.94))
+    fig.savefig(FIGURES / "fitted-response.png", dpi=170)
+    plt.close(fig)
+
+
+def figure_noise_autocorrelation() -> None:
+    """Describe the existing noise generator with timecourses and lag correlations."""
+    n_frames = build_apertures(CONFIG.stimulus, "bar").n_frames
+    lags = np.arange(13)
+    fig, axes = plt.subplots(1, 2, figsize=(9.6, 3.8))
+    for label, colour in (("white noise", ACCENT), (f"{CARRIER_WIDTH}-frame moving average", WARN)):
+        correlations = []
+        for seed in CV_SEEDS:
+            noise = (
+                np.random.default_rng(seed).normal(size=n_frames)
+                if label == "white noise"
+                else autocorrelated_noise(n_frames, CARRIER_WIDTH, seed)
+            )
+            correlations.append(
+                [1.0] + [float(np.corrcoef(noise[:-lag], noise[lag:])[0, 1]) for lag in lags[1:]]
+            )
+            if seed == CV_SEEDS[0]:
+                standardized = (noise - noise.mean()) / noise.std()
+                axes[0].plot(standardized, color=colour, lw=1.3, label=label)
+        axes[1].plot(
+            lags,
+            np.mean(correlations, axis=0),
+            "o-",
+            color=colour,
+            ms=4,
+            lw=1.7,
+            label=f"{label}: sample mean",
+        )
+    axes[0].set_title(f"One paired realization (seed {CV_SEEDS[0]})")
+    axes[0].set_xlabel("frame")
+    axes[0].set_ylabel("noise (standard deviation units)")
+    axes[0].legend(frameon=False, fontsize=8)
+    axes[1].axhline(0, color=INK, lw=0.9)
+    axes[1].plot(
+        lags,
+        np.maximum(1 - lags / CARRIER_WIDTH, 0),
+        color="#8c959f",
+        ls=":",
+        lw=1.6,
+        label="stationary moving-average reference",
+    )
+    axes[1].set_title(f"Mean sample autocorrelation ({len(CV_SEEDS)} seeds)")
+    axes[1].set_xlabel("lag (frames)")
+    axes[1].set_ylabel("Pearson correlation at each lag")
+    axes[1].set_xticks(lags[::2])
+    axes[1].set_ylim(-0.3, 1.06)
+    axes[1].legend(frameon=False, fontsize=8)
+    for axis in axes:
+        axis.grid(axis="y", color="#eef1f4", lw=1)
+        axis.set_axisbelow(True)
+    fig.suptitle(
+        "Noise inputs used in the grouped-validation experiment", fontsize=11.5, fontweight="bold"
+    )
+    fig.text(
+        0.5,
+        0.025,
+        f"{n_frames} frames per seed; seeds {CV_SEEDS[0]}–{CV_SEEDS[-1]}. "
+        "Lagged correlations are computed per seed, then averaged.\n"
+        f"Moving-average reference: max(1 − lag/{CARRIER_WIDTH}, 0). "
+        "Finite samples can differ. These curves describe inputs, not fit quality.",
+        ha="center",
+        fontsize=8.5,
+    )
+    fig.tight_layout(rect=(0, 0.12, 1, 0.93))
+    fig.savefig(FIGURES / "noise-autocorrelation.png", dpi=170)
+    plt.close(fig)
 
 
 def figure_stimulus() -> None:
@@ -688,7 +961,7 @@ def figure_runtime() -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Regenerate nine validation figures in outputs/.")
+    parser = argparse.ArgumentParser(description="Regenerate 12 figures in docs/figures/.")
     parser.parse_args(argv)
     try:
         load_recorded_report()
@@ -697,6 +970,9 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     FIGURES.mkdir(parents=True, exist_ok=True)
     for draw in (
+        figure_pipeline,
+        figure_fitted_response,
+        figure_noise_autocorrelation,
         figure_stimulus,
         figure_fold_leakage,
         figure_recovery,

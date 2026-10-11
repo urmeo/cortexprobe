@@ -2,7 +2,7 @@
 
 These experiments test the fitting and validation code on generated responses.
 They do not test a neural network or human data. The tables come from
-[`outputs/validation.json`](../outputs/validation.json), using
+[`results/validation.json`](../results/validation.json), using
 [`configs/validation.json`](../configs/validation.json). Each table retains its
 recorded environment, date, and configuration digest.
 
@@ -34,7 +34,7 @@ values in this table are in-sample scores from fits using all frames.
 <sub>n = 5, shared noise seed 7; pure noise 0/40 accepted (best R² 0.1947, threshold 0.2). Recorded on macOS-26.6.1 arm64, Python 3.12.13, NumPy 2.5.2, SciPy 1.18.0 | config digest `4d6a856a499e` | generated 2026-08-19</sub>
 <!-- END GENERATED: recovery -->
 
-![Known and recovered fields across noise levels](../outputs/recovery.png)
+![Known and recovered fields across noise levels](figures/recovery.png)
 
 ## Parameter uncertainty
 
@@ -67,7 +67,7 @@ The binomial intervals around coverage use the Wald approximation.
 <sub>Nominal 95%; paired seeds across cells; noiseless SE is a numerical floor. Recorded on macOS-26.6.1 arm64, Python 3.12.13, NumPy 2.5.2, SciPy 1.18.0 | config digest `4d6a856a499e` | generated 2026-08-19</sub>
 <!-- END GENERATED: uncertainty -->
 
-![Local uncertainty and empirical interval coverage](../outputs/uncertainty.png)
+![Local uncertainty and empirical interval coverage](figures/uncertainty.png)
 
 ## Grouped and random splits
 
@@ -91,7 +91,7 @@ random frame split can inflate this score without a receptive-field signal.
 <sub>Mean ± SD, seeds 21-40; width-3 boxcar lag-1 0.651 ± 0.086 (theory 0.667). Recorded on macOS-26.6.1 arm64, Python 3.12.13, NumPy 2.5.2, SciPy 1.18.0 | config digest `4d6a856a499e` | generated 2026-08-19</sub>
 <!-- END GENERATED: cross_validation -->
 
-![Grouped and random-split scores for noise responses](../outputs/leakage.png)
+![Grouped and random-split scores for noise responses](figures/leakage.png)
 
 ## Runtime
 
@@ -113,7 +113,7 @@ them without remeasuring runtime.
 <sub>Hardware timings; 4 folds plus the full fit; not remeasured by --check. Recorded on macOS-27.0.1 arm64, Python 3.12.13, NumPy 2.5.3, SciPy 1.18.1 | config digest `4d6a856a499e` | generated 2026-10-06</sub>
 <!-- END GENERATED: runtime -->
 
-![Recorded fit and cross-validation times](../outputs/runtime.png)
+![Recorded fit and cross-validation times](figures/runtime.png)
 
 ## Method and constraints
 
@@ -178,7 +178,10 @@ recorded values and provenance.
 Use `python scripts/generate_validation_report.py --runtime` to refresh hardware
 timings explicitly. Review the numeric record, tables, and figures together.
 The figure script also writes supplemental diagnostic plots to
-[`outputs/`](../outputs/); those plots are not all part of the recorded tables.
+[the figure gallery](figures/); those plots are not all part of the recorded tables.
+The pipeline and response curves show a separate seeded demonstration. The
+noise autocorrelation curves describe the existing validation noise generator.
+These illustrations do not alter the recorded measurements or their provenance.
 
 ## References
 
