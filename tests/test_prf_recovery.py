@@ -1,10 +1,4 @@
-"""Ground-truth recovery for the pRF fitter.
-
-This is the load-bearing test of the project. Synthetic activations are generated from pRFs
-with *known* parameters and handed to the fitter; the fitter must recover them. If it cannot
-recover a pRF it produced itself, then no pRF it reports from a real network means anything,
-and a fitter bug would be indistinguishable from a scientific finding.
-"""
+"""Check recovery of known synthetic pRF parameters."""
 
 from __future__ import annotations
 

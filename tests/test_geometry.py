@@ -1,9 +1,4 @@
-"""The visual field coordinate system.
-
-Stimuli and receptive fields both take their coordinates from :class:`Grid`. If the two ever
-disagreed about where the origin is or which way is up, a fitted pRF position would be
-meaningless while still looking perfectly reasonable, so the conventions are pinned here.
-"""
+"""Verify the shared coordinate system for stimuli and receptive fields."""
 
 from __future__ import annotations
 

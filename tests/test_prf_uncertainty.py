@@ -1,9 +1,4 @@
-"""Parameter uncertainty.
-
-A pRF position reported without an error bar invites the reader to treat 12.0 and 12.4 as
-different when the data cannot distinguish them. These tests check that the reported interval
-tracks the actual noise level and covers the parameter that generated the signal.
-"""
+"""Check noise-dependent standard errors and empirical confidence-interval coverage."""
 
 from __future__ import annotations
 
@@ -151,17 +146,9 @@ def test_degrees_of_freedom_count_distinct_frames(grid, fit_config) -> None:
 @pytest.mark.parametrize("truth", [(12.0, 8.0, 5.0), (28.0, 0.0, 4.0)])
 @pytest.mark.parametrize("noise", [0.2, 0.5])
 def test_interval_coverage_is_calibrated(fitter, grid, apertures, truth, noise) -> None:
-    """Empirical coverage of the nominal 95 per cent interval, over many realisations.
+    """Check nominal 95% interval coverage over 200 trials at interior and near-edge positions.
 
-    Five successes prove very little about a 95 per cent interval: you would see 5/5 about 77
-    per cent of the time even at 95 per cent true coverage, and about 59 per cent of the time
-    at 90 per cent. Two hundred realisations narrow that enough to be worth asserting.
-
-    Both an interior position and one near the field edge are tested, since the linearisation
-    behind the interval is weakest where the stimulus constrains the fit least. Measured
-    coverage runs 0.915 to 0.935 against a nominal 0.95, so the interval is mildly optimistic
-    -- which is a property worth knowing and stating, not one to paper over with a loose bound.
-    """
+    Recorded coverage is 0.915 to 0.935, below the nominal level."""
     realisations = 200
     covered = 0
     for seed in range(realisations):

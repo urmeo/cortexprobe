@@ -1,12 +1,4 @@
-"""Stimulus construction, and the fold-leakage invariant that makes cross-validation mean something.
-
-The load-bearing tests here are :func:`test_no_duplicate_frame_crosses_a_fold_boundary` and
-:func:`test_held_out_frames_are_dissimilar_from_training_frames`. They are asserted against the
-**default** configuration as well as the small one the rest of the suite uses, because the
-defect they exist to catch was invisible for exactly that reason: the shipped default paired
-every sweep with its 180 degree partner, producing bit-identical frames in different folds,
-while the test fixture used four directions and could not.
-"""
+"""Check stimulus construction and cross-fold duplicate and similarity constraints."""
 
 from __future__ import annotations
 
@@ -66,7 +58,7 @@ def test_held_out_frames_are_dissimilar_from_training_frames(small_config, kind)
 
 @pytest.mark.parametrize("kind", KINDS)
 def test_default_config_holds_the_same_invariant(default_stimulus_config, kind) -> None:
-    """The configuration a user gets with no overrides must be as honest as the test fixture."""
+    """Check cross-fold separation with the default configuration."""
     sequence = build_apertures(default_stimulus_config, kind)
     flat = sequence.apertures.reshape(sequence.n_frames, -1)
 
@@ -105,11 +97,7 @@ def test_opposite_sweeps_produce_identical_frames() -> None:
 
 
 def test_a_four_direction_set_can_still_contain_opposite_sweeps() -> None:
-    """Four directions is no protection; (0, 90, 180, 270) has two opposite pairs.
-
-    The test fixture is safe because of the angles it picks, not because it picks four of them.
-    Axis grouping is what makes this configuration honest, so it is asserted directly.
-    """
+    """Check axis grouping for (0, 90, 180, 270), which contains two opposite sweep pairs."""
     config = StimulusConfig(resolution=RESOLUTION, n_steps=20, directions=(0, 90, 180, 270))
     sequence = build_apertures(config, "bar")
     flat = sequence.apertures.reshape(sequence.n_frames, -1)

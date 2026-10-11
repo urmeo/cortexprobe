@@ -1,8 +1,4 @@
-"""Shared synthetic ground truth.
-
-Every fixture here builds data from *known* pRF parameters, so any test can compare what the
-fitter reports against what actually generated the signal.
-"""
+"""Synthetic pRF fixtures with known parameters and noise levels."""
 
 from __future__ import annotations
 
@@ -72,12 +68,7 @@ def synthesise(
 
 
 def autocorrelated_noise(n_frames: int, width: int = 3, seed: int = 21) -> np.ndarray:
-    """Noise with frame-to-frame correlation but no pRF structure.
-
-    Real activation timecourses are smooth in time: a bar moving one step changes the input
-    only slightly, so consecutive frames are correlated. White noise is not a realistic
-    stand-in when the question is whether a validation split leaks.
-    """
+    """Noise with frame-to-frame correlation and no pRF structure, for split-leakage tests."""
     rng = np.random.default_rng(seed)
     kernel = np.ones(width) / width
     return np.convolve(rng.normal(size=n_frames), kernel, mode="same")
@@ -85,13 +76,5 @@ def autocorrelated_noise(n_frames: int, width: int = 3, seed: int = 21) -> np.nd
 
 @pytest.fixture(scope="session")
 def default_stimulus_config() -> StimulusConfig:
-    """The configuration a user gets with no overrides at all.
-
-    Every other fixture here pins a smaller stimulus so the suite stays fast, with directions
-    (0, 45, 90, 135). Those particular angles contain no pair 180 degrees apart, so that config
-    cannot exhibit the duplicate-sweep leak the shipped default once had. That is a property of
-    the angles chosen, not of choosing four of them -- (0, 90, 180, 270) has two such pairs and
-    is equally legal -- which is exactly why the default is fixtured here and asserted against
-    directly rather than trusted to be representative.
-    """
+    """Default settings include opposite sweeps that the smaller four-angle fixture omits."""
     return StimulusConfig()

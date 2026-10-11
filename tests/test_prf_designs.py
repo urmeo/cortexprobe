@@ -1,9 +1,4 @@
-"""Recovery across stimulus designs and noise levels.
-
-A fitter that only works for bar sweeps at one signal-to-noise ratio is not a measurement
-instrument. These tests sweep both axes and assert that accuracy degrades gracefully rather
-than collapsing, and that the fitter's own confidence tracks that degradation.
-"""
+"""Check parameter recovery and uncertainty across stimulus designs and noise levels."""
 
 from __future__ import annotations
 

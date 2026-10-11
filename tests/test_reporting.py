@@ -1,4 +1,4 @@
-"""Recorded measurements, provenance and figure coordinates stay truthful."""
+"""Verify recorded measurements, provenance, and figure coordinates."""
 
 from __future__ import annotations
 

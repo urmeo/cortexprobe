@@ -1,9 +1,4 @@
-"""Held-out validation and the leakage it is designed to expose.
-
-The decisive pair is :func:`test_random_frame_split_leaks_on_autocorrelated_noise` and its
-white-noise counterpart. Together they show why folds are split by sweep group, and pin the
-mechanism: the leak needs both overlapping apertures and a temporally correlated response.
-"""
+"""Check grouped validation and random-split leakage on white and autocorrelated noise."""
 
 from __future__ import annotations
 
@@ -109,15 +104,7 @@ def _leak(validator, leaky, response) -> float:
 def test_random_frame_split_leaks_on_autocorrelated_noise(
     validator, leaky_validator, apertures
 ) -> None:
-    """A random frame split inflates the held-out score on temporally correlated noise.
-
-    The leak needs two ingredients: apertures that barely change between neighbouring frames,
-    and a response correlated across those frames. Both hold for real activations, since a bar
-    moving one step barely changes the input. The response here has no pRF structure at all.
-
-    Asserted over twenty realisations rather than one. A single realisation would make almost
-    any threshold unfalsifiable, and the seed-to-seed spread here is comparable to the effect.
-    """
+    """Check random-split score inflation from overlapping apertures and correlated noise over 20 seeds."""
     leaks = [
         _leak(validator, leaky_validator, autocorrelated_noise(len(apertures), width=3, seed=seed))
         for seed in SEEDS
@@ -131,12 +118,7 @@ def test_random_frame_split_leaks_on_autocorrelated_noise(
 def test_white_noise_leak_is_indistinguishable_from_zero(
     validator, leaky_validator, apertures
 ) -> None:
-    """The counterpart, which pins the mechanism to autocorrelation rather than overlap.
-
-    With no temporal correlation there is nothing for a split to leak. The point estimate is
-    not merely small: it changes sign across realisations, so reporting any single one as
-    evidence that white noise does not leak would be reporting noise.
-    """
+    """Check that the random-split leakage estimate varies around zero for white noise."""
     leaks = [
         _leak(validator, leaky_validator, np.random.default_rng(seed).normal(size=len(apertures)))
         for seed in SEEDS

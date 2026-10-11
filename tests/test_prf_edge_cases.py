@@ -1,10 +1,4 @@
-"""Edge cases where a pRF fit is most likely to fail silently.
-
-Interior pRFs of moderate size are the easy case. The failure modes that matter are centres
-pushed to the edge of the stimulated field and sigmas pressed against their search bounds,
-because there the optimiser can return a confident-looking parameter that is really an
-artefact of where the search stopped.
-"""
+"""Check fit acceptance at field edges, parameter bounds, and model mismatches."""
 
 from __future__ import annotations
 
@@ -265,12 +259,7 @@ def test_a_single_lobed_unit_is_not_flagged(fitter, grid, apertures) -> None:
 
 @pytest.mark.slow
 def test_misspecification_separates_single_from_two_lobed_units(fitter, grid, apertures) -> None:
-    """Pins the range the docstring, the ADR and the README all quote.
-
-    The separation is not uniform: it narrows as noise grows, and the weakest two-lobe case sits
-    only about four times above pure noise. Asserting the whole range keeps that honest, so a
-    change that quietly erodes the margin fails here rather than in a downstream analysis.
-    """
+    """Verify the recorded single- and two-lobe diagnostic ranges across noise levels."""
     from cortexprobe.prf.model import predict
 
     geometries = [
@@ -434,11 +423,7 @@ def test_confidence_interval_accepts_every_fitted_parameter(
 
 @pytest.mark.parametrize("resolution", [32, 64, 96, 128, 160, 200])
 def test_sigma_ceiling_advice_works_at_every_resolution(resolution) -> None:
-    """The 64 px fixture rounded down by luck; other grids rounded up and stayed rejected.
-
-    Both figures the message names must be usable: the sigma bound must clear the volume
-    tolerance, and the resolution must be even, since StimulusConfig rejects odd fields.
-    """
+    """Check that suggested sigma bounds meet the volume tolerance and suggested resolutions are even."""
     import re
 
     from cortexprobe.config import ConfigError

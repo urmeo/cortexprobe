@@ -1,10 +1,4 @@
-"""Configuration validation, serialisation, and the run digest.
-
-Configuration is the only source of truth in this project, so two things have to hold. Every
-guard must actually fire -- including the sigma floor the README elevates to a named design
-decision -- and a configuration must survive a round trip through JSON unchanged, or the digest
-that identifies a run would not identify it.
-"""
+"""Validate configuration bounds, JSON round trips, and stable run digests."""
 
 from __future__ import annotations
 
@@ -69,7 +63,7 @@ def test_model_config_rejects_invalid_values(overrides, message) -> None:
 
 
 def test_sigma_floor_under_a_pixel_is_rejected_with_a_reason() -> None:
-    """The repository's marquee guard: below the pixel pitch a Gaussian loses unit volume."""
+    """Reject sigma bounds below one pixel."""
     with pytest.raises(ConfigError, match="at least 1 pixel"):
         FitConfig(sigma_bounds=(0.2, 10.0))
 

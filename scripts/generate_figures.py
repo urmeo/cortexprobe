@@ -255,7 +255,7 @@ def figure_recovery() -> None:
 
 
 def figure_leakage() -> None:
-    """Held-out score under an honest split and a random frame split, over 20 seeds."""
+    """Grouped and random-frame held-out scores over 20 seeds."""
     grid = Grid(CONFIG.stimulus.resolution)
     sequence = build_apertures(CONFIG.stimulus, "bar")
     apertures = sequence.as_float()
