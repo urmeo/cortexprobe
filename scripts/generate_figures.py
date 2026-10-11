@@ -1,8 +1,9 @@
 """Regenerate project and validation figures in docs/figures/.
 
-Coverage and timing panels use results/validation.json; other panels run supplemental
-synthetic diagnostics. A matching configuration digest is required. Run the report's
---check first to verify recorded numbers; it does not compare figure pixels.
+Coverage and timing panels use results/validation.json. The pipeline describes the workflow;
+other panels show synthetic model behavior and diagnostics. A matching configuration digest
+is required. Run the report's --check first to verify recorded numbers; it does not compare
+figure pixels.
 Needs the ``viz`` extra::
 
     python3 -m pip install -e '.[viz]'
@@ -22,8 +23,7 @@ matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib.colors import ListedColormap
-from matplotlib.patches import FancyArrowPatch
+from matplotlib.patches import FancyArrowPatch, Rectangle
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -107,7 +107,7 @@ def pixel_coordinates(grid: Grid, x0: float, y0: float) -> tuple[float, float]:
 
 
 def synthetic_fit_example():
-    """One reproducible noisy response for the pipeline and prediction figures."""
+    """One reproducible noisy response for the prediction figure."""
     grid = Grid(CONFIG.stimulus.resolution)
     sequence = build_apertures(CONFIG.stimulus, "bar")
     apertures = sequence.as_float()
@@ -120,99 +120,187 @@ def synthetic_fit_example():
 
 
 def figure_pipeline() -> None:
-    """Show the synthetic experiment from stimulus masks to measured outputs."""
-    grid, sequence, apertures, _, response, fit = synthetic_fit_example()
-    groups = np.unique(sequence.group)
-    fig, axes = plt.subplots(1, 5, figsize=(12.5, 3.5))
-    fig.subplots_adjust(left=0.035, right=0.98, top=0.70, bottom=0.28, wspace=0.42)
-    titles = (
-        "Build apertures",
-        "Create response",
-        "Fit a Gaussian",
-        "Hold out groups",
-        "Inspect results",
-    )
-    captions = (
-        f"{sequence.n_frames} retained bar frames\n{grid.resolution} × {grid.resolution} pixels",
-        f"Known field + Gaussian noise\n{EXAMPLE_NOISE:.0%} signal SD; seed {RECOVERY_SEED}",
-        "Search → refine\nCenter, width, gain, baseline",
-        f"Refit {len(groups)} training folds\nScore each test group",
-        "Fit parameters and scores\nTables and diagnostic plots",
-    )
-    for index, (axis, title, caption) in enumerate(zip(axes, titles, captions)):
-        axis.set_title(f"{index + 1}. {title}", fontsize=10, fontweight="bold", pad=14)
-        position = axis.get_position()
-        fig.text((position.x0 + position.x1) / 2, 0.165, caption, ha="center", va="top", fontsize=9)
-        axis.set_xticks([])
-        axis.set_yticks([])
-        for spine in axis.spines.values():
-            spine.set_visible(False)
+    """Separate full-data estimation from training-only validation refits."""
+    fig = plt.figure(figsize=(12, 8))
+    muted = "#59636e"
+    border = "#c9d4df"
 
-    axes[0].imshow(apertures[14], cmap="gray_r", interpolation="nearest", aspect="auto")
-    axes[1].plot(response, color=ACCENT, lw=1.3)
-    axes[1].set_xlabel("frame", fontsize=8)
-    known_weights = GaussianReceptiveField(*UNCERTAINTY_TRUTH).weights(grid)
-    fitted_weights = GaussianReceptiveField(fit.x0, fit.y0, fit.sigma).weights(grid)
-    axes[2].imshow(known_weights, cmap="magma", interpolation="nearest", aspect="auto")
-    axes[2].contour(
-        fitted_weights, levels=[fitted_weights.max() * np.exp(-0.5)], colors=GOOD, linewidths=1.5
-    )
-    axes[2].set_xlabel("known field + fitted 1σ contour", fontsize=8)
-
-    axes[3].imshow(np.eye(len(groups)), cmap=ListedColormap(["#deebf7", "#e9b59b"]), aspect="auto")
-    axes[3].set_xticks(
-        np.arange(len(groups)), [f"G{i + 1}" for i in range(len(groups))], fontsize=7
-    )
-    axes[3].set_yticks(
-        np.arange(len(groups)), [f"F{i + 1}" for i in range(len(groups))], fontsize=7
-    )
-    axes[3].set_xlabel("blue: train · orange: test", fontsize=8)
-    axes[4].axis("off")
-    table = axes[4].table(
-        cellText=[
-            ["center (px)", f"{fit.x0:.1f}, {fit.y0:.1f}"],
-            ["width σ (px)", f"{fit.sigma:.2f}"],
-            ["in-sample R²", f"{fit.r2:.3f}"],
-        ],
-        colLabels=["full-data fit", "estimate"],
-        colWidths=[0.62, 0.38],
-        cellLoc="left",
-        loc="center",
-    )
-    table.auto_set_font_size(False)
-    table.set_fontsize(8)
-    table.scale(1.12, 1.7)
-    for (row, _), cell in table.get_celld().items():
-        cell.set_edgecolor("#d0d7de")
-        cell.set_facecolor("#eef3f8" if row == 0 else "white")
-
-    for left, right in zip(axes[:-1], axes[1:]):
-        left_position, right_position = left.get_position(), right.get_position()
+    def box(x, y, width, height, fill="white"):
         fig.add_artist(
-            FancyArrowPatch(
-                (left_position.x1 + 0.007, 0.49),
-                (right_position.x0 - 0.007, 0.49),
+            Rectangle(
+                (x, y),
+                width,
+                height,
                 transform=fig.transFigure,
-                arrowstyle="-|>",
-                mutation_scale=13,
-                color="#8c959f",
-                lw=1.2,
+                facecolor=fill,
+                edgecolor=border,
+                linewidth=1.2,
             )
         )
-    fig.suptitle(
-        "CortexProbe: a synthetic receptive-field experiment",
-        fontsize=14,
+
+    def arrow(start, end):
+        fig.add_artist(
+            FancyArrowPatch(
+                start,
+                end,
+                transform=fig.transFigure,
+                arrowstyle="-|>",
+                mutation_scale=15,
+                color=muted,
+                linewidth=1.4,
+                shrinkA=0,
+                shrinkB=0,
+            )
+        )
+
+    fig.text(
+        0.5,
+        0.96,
+        "CortexProbe: from synthetic inputs to results",
+        ha="center",
+        va="center",
+        fontsize=23,
         fontweight="bold",
-        y=0.96,
+    )
+    fig.text(
+        0.5,
+        0.915,
+        "Estimate one field; evaluate predictions with separate fold refits.",
+        ha="center",
+        va="center",
+        fontsize=14,
+        color=muted,
+    )
+
+    box(0.06, 0.76, 0.88, 0.125, fill="#eef4f9")
+    fig.text(0.085, 0.859, "1  Prepare matched inputs", fontsize=16, fontweight="bold")
+    fig.text(
+        0.085,
+        0.832,
+        "Build bar, wedge or ring masks; group related frames; prune cross-group overlap.",
+        fontsize=13,
+    )
+    fig.text(
+        0.085,
+        0.805,
+        "Known Gaussian overlap × amplitude + baseline + optional noise → response.",
+        fontsize=13,
+    )
+    fig.text(
+        0.085,
+        0.778,
+        "Align retained masks, responses and group labels by frame.",
+        fontsize=12.5,
+        color=muted,
+    )
+    fig.add_artist(
+        plt.Line2D(
+            [0.27, 0.27, 0.73, 0.73],
+            [0.72, 0.742, 0.742, 0.72],
+            transform=fig.transFigure,
+            color=muted,
+            linewidth=1.4,
+        )
+    )
+    fig.add_artist(
+        plt.Line2D(
+            [0.5, 0.5],
+            [0.76, 0.742],
+            transform=fig.transFigure,
+            color=muted,
+            linewidth=1.4,
+        )
+    )
+    arrow((0.27, 0.72), (0.27, 0.705))
+    arrow((0.73, 0.72), (0.73, 0.705))
+
+    box(0.06, 0.36, 0.42, 0.345)
+    box(0.52, 0.36, 0.42, 0.345)
+    fig.text(0.085, 0.671, "2a  Fit on all frames", fontsize=16, fontweight="bold", color=ACCENT)
+    fig.text(0.085, 0.626, "Fit one model using all retained frames.", fontsize=13)
+    fig.text(0.085, 0.589, "Estimate center, width, amplitude and baseline.", fontsize=12.5)
+    fig.text(0.085, 0.537, "Accept the fit only when:", fontsize=13, fontweight="bold")
+    for y, criterion in zip(
+        (0.494, 0.461, 0.428, 0.395),
+        (
+            "Optimizer converged",
+            "In-sample R² ≥ configured threshold",
+            "Amplitude > 0",
+            "σ is away from both search bounds",
+        ),
+    ):
+        fig.text(0.1, y, criterion, fontsize=13)
+
+    fig.text(
+        0.545,
+        0.671,
+        "2b  Evaluate held-out groups",
+        fontsize=16,
+        fontweight="bold",
+        color=GOOD,
+    )
+    for y, instruction in zip(
+        (0.626, 0.589, 0.552, 0.515, 0.478),
+        (
+            "Hold out one group.",
+            "Refit using the other groups only.",
+            "Keep fitted parameters fixed.",
+            "Predict and score the held-out group.",
+            "Repeat for each usable fold.",
+        ),
+    ):
+        fig.text(0.545, y, instruction, fontsize=13)
+    fig.text(0.545, 0.418, "Report R² for each held-out group.", fontsize=12.5)
+    fig.text(0.545, 0.385, "Summarize finite scores with mean and SD.", fontsize=12.5)
+
+    box(0.18, 0.238, 0.64, 0.092, fill="#f4f6f8")
+    fig.text(
+        0.5,
+        0.307,
+        "Same fitting algorithm in both paths",
+        ha="center",
+        fontsize=13,
+        fontweight="bold",
+    )
+    fig.text(
+        0.5,
+        0.279,
+        "Coarse grid of center and width → bounded nonlinear refinement",
+        ha="center",
+        fontsize=12.5,
+    )
+    fig.text(
+        0.5,
+        0.251,
+        "At every geometry, solve amplitude + baseline by least squares.",
+        ha="center",
+        fontsize=12.5,
+    )
+    arrow((0.10, 0.36), (0.10, 0.19))
+    arrow((0.90, 0.36), (0.90, 0.19))
+
+    box(0.06, 0.07, 0.88, 0.12, fill="#eef4f9")
+    fig.text(0.085, 0.158, "3  Inspect results", fontsize=16, fontweight="bold")
+    fig.text(
+        0.085,
+        0.119,
+        "Parameters and acceptance · in-sample and held-out scores · tables and plots",
+        fontsize=13,
+    )
+    fig.text(
+        0.085,
+        0.086,
+        "Held-out scores, local errors and residual second-field gain do not gate acceptance.",
+        fontsize=12.5,
+        color=muted,
     )
     fig.text(
         0.5,
         0.025,
-        "Python · NumPy · SciPy   |   Synthetic inputs only; "
-        "no network runner or human-data validation",
+        "Synthetic only: no neural-network responses or human data evaluated.",
         ha="center",
-        fontsize=9,
-        color="#59636e",
+        fontsize=12,
+        color=muted,
     )
     fig.savefig(FIGURES / "pipeline.png", dpi=180)
     plt.close(fig)

@@ -8,13 +8,16 @@ with Python, NumPy, and SciPy. Matplotlib draws the figures.
 
 ## Pipeline
 
-Build apertures → generate a response → fit a Gaussian → hold out groups → inspect results.
+Apertures and synthetic responses feed two separate paths: a full-data estimate
+and held-out validation.
 
-[![Pipeline from moving apertures to synthetic responses, fitting, validation, and results](docs/figures/pipeline.png)](docs/figures/pipeline.png)
+[![Apertures and synthetic responses branch into a full-data fit and separate training-fold refits, then combine their outputs for inspection](docs/figures/pipeline.png)](docs/figures/pipeline.png)
 
-The full-data fit estimates the field. Each validation fold fits a separate model
-on its training groups and scores the held-out group. Click any figure to view it
-at full size.
+Both paths use candidate search and bounded refinement. The full-data fit
+describes the field. Validation refits each training fold and keeps its parameters
+fixed while scoring the held-out group. [Pipeline details](docs/pipeline.md)
+explain the fitting steps, acceptance rules, uncertainty, and recorded checks.
+Click any figure to view it at full size.
 
 ## From aperture to response
 
@@ -147,7 +150,7 @@ python scripts/generate_figures.py
 | `examples/` | Runnable synthetic fitting example |
 | `configs/` | Recorded experiment configuration |
 | `results/` | Numeric record and measurement provenance |
-| `docs/` | Usage and validation conditions |
+| `docs/` | Pipeline, usage, and validation conditions |
 | `docs/figures/` | Generated pipeline diagram, curves, and charts |
 | `scripts/` | Report and figure generation |
 | `benchmarks/` | Measured runtime by unit count |

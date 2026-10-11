@@ -11,7 +11,7 @@ python scripts/generate_figures.py
 
 | Figure | What it shows | Basis |
 |---|---|---|
-| [Pipeline](pipeline.png) | Apertures → synthetic response → fit → held-out groups → results | Seeded demonstration |
+| [Pipeline](pipeline.png) | Shared inputs → full-data estimate and separate grouped refits → outputs | Implemented workflow |
 | [Apertures](stimuli.png) | Bar, wedge, and ring masks with group labels | Configured stimulus designs |
 | [Gaussian overlap](model.png) | A field's overlap with the aperture produces a response | Forward-model illustration |
 | [Response curves](fitted-response.png) | Observations, full-data fit, held-out predictions, and residuals | Seeded demonstration |
@@ -25,6 +25,8 @@ python scripts/generate_figures.py
 | [Runtime](runtime.png) | Fit and cross-validation timings by unit count | Recorded hardware timings |
 
 See [Validation](../validation.md) for measured conditions, uncertainty
-assumptions, and provenance. The pipeline and response curves illustrate a
-single synthetic run; they do not add a new network or human-data evaluation.
+assumptions, and provenance. [Pipeline details](../pipeline.md) explain the two
+fitting paths. The pipeline diagram shows the implemented workflow; the response
+curves illustrate a seeded synthetic run. These figures do not add a new network
+or human-data evaluation.
 The autocorrelation curves describe the noise inputs, not model fit quality.

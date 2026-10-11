@@ -46,8 +46,8 @@ The project contributor is `urmeo`. Keep commits attributed to that account.
 
 ## Documentation site
 
-The Pages site renders the README, usage guide, validation tables, and figure
-gallery from their Markdown sources. Build and preview it locally:
+The Pages site renders the README, pipeline guide, usage guide, validation tables,
+and figure gallery from their Markdown sources. Build and preview it locally:
 
 ```sh
 python -m pip install -e '.[docs]'

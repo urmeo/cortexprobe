@@ -19,6 +19,7 @@ OUTPUT = ROOT / "_site"
 REPOSITORY = "https://github.com/urmeo/cortexprobe"
 PAGES = {
     Path("README.md"): (Path("index.html"), "Overview"),
+    Path("docs/pipeline.md"): (Path("docs/pipeline.html"), "Pipeline"),
     Path("docs/usage.md"): (Path("docs/usage.html"), "Usage"),
     Path("docs/validation.md"): (Path("docs/validation.html"), "Validation"),
     Path("docs/figures/README.md"): (Path("docs/figures/index.html"), "Figures"),
@@ -112,10 +113,10 @@ def render_page(source: Path) -> str:
     content = renderer.convert((ROOT / source).read_text(encoding="utf-8"))
     content = content.replace("<pre>", '<pre tabindex="0">')
     navigation = []
-    for destination, text in list(PAGES.values())[:4]:
+    for destination, text in list(PAGES.values())[:5]:
         current = ' aria-current="page"' if destination == page else ""
         navigation.append(f'<a href="{relative_url(destination, page)}"{current}>{text}</a>')
-    if source in (Path("docs/usage.md"), Path("docs/validation.md")):
+    if source in (Path("docs/pipeline.md"), Path("docs/usage.md"), Path("docs/validation.md")):
         contents = (
             '<nav class="page-toc" aria-label="On this page">'
             f'<p class="toc-label">On this page</p>{renderer.toc}</nav>'
