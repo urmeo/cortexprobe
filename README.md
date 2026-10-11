@@ -4,43 +4,113 @@ Fit 2D Gaussian population receptive fields to synthetic aperture responses
 with Python, NumPy, and SciPy. Matplotlib draws the figures.
 **No neural network or human data has been tested.**
 
-[Documentation and plots](https://urmeo.github.io/cortexprobe/)
+[Documentation](https://urmeo.github.io/cortexprobe/) · [Usage](docs/usage.md) · [Validation](docs/validation.md)
 
-![Pipeline from moving apertures to synthetic responses, fitting, validation, and results](docs/figures/pipeline.png)
+## Pipeline
+
+Build apertures → generate a response → fit a Gaussian → hold out groups → inspect results.
+
+[![Pipeline from moving apertures to synthetic responses, fitting, validation, and results](docs/figures/pipeline.png)](docs/figures/pipeline.png)
+
+The full-data fit estimates the field. Each validation fold fits a separate model
+on its training groups and scores the held-out group. Click any figure to view it
+at full size.
 
 ## From aperture to response
 
-Bar, wedge, and ring apertures sample the field. A Gaussian predicts each
-response by summing its weights over the aperture. The fitter estimates the
-center, width, amplitude, and baseline.
+The fitter searches candidate centers and widths, then refines the Gaussian.
+It solves amplitude and baseline by linear least squares at each trial geometry.
 
-![Bar, wedge, and ring aperture sequences](docs/figures/stimuli.png)
+**Apertures.** Bar sweeps, rotating wedges, and expanding rings sample different
+parts of the field. Frames carry group labels for validation.
 
-![Observed response, full-data fit, and separately trained held-out predictions](docs/figures/fitted-response.png)
+[![Bar, wedge, and ring aperture sequences with validation groups](docs/figures/stimuli.png)](docs/figures/stimuli.png)
+
+**Forward model.** More overlap between the Gaussian and the aperture produces
+a larger predicted response. Coordinates and width are in pixels.
+
+[![Gaussian field, two aperture positions, and the resulting response curve](docs/figures/model.png)](docs/figures/model.png)
+
+**Response curves.** This example uses the field `(12, 8, 5)`, 20% Gaussian noise,
+and seed 7. It separates the full-data fit, held-out predictions, and residuals.
+
+[![Observed response, full-data fit, separately trained held-out predictions, and residuals](docs/figures/fitted-response.png)](docs/figures/fitted-response.png)
 
 ## Recovery and uncertainty
 
 The recovery experiment uses five known fields and one shared noise seed per
 condition. Noise is measured relative to the clean response's standard deviation.
-The largest observed error is specific to these five fits.
+The largest observed error is specific to these five fits in one noise draw.
 
-![Position and size recovery across noise levels](docs/figures/recovery.png)
+The recorded setup uses a 64 × 64 pixel field, 80 bar frames, four groups,
+300 candidate fields, and sigma bounds of 1–10 pixels.
 
-![Local parameter uncertainty and measured x0 interval coverage](docs/figures/uncertainty.png)
+| Noise | Mean position error (px) | Largest position error (px) | Mean sigma error |
+|---|---|---|---|
+| None | 0.000 | 0.000 | 0.0% |
+| 20% | 0.197 | 0.287 | 2.3% |
+| 50% | 0.511 | 0.772 | 5.6% |
+
+These are the five-field results with shared seed 7. A separate pure-noise check
+accepted 0 of 40 response columns at seed 11 with an in-sample R² threshold of 0.2.
+The [numeric record](results/validation.json) and
+[validation report](docs/validation.md#recovery) retain the full results and provenance.
+
+[![Position and sigma recovery across noise levels for five known fields](docs/figures/recovery.png)](docs/figures/recovery.png)
+
+The nominal 95% `x0` intervals covered the true value in 91.5–93.5% of trials
+across the four recorded conditions. Each condition uses 200 trials; seeds are
+paired across conditions. The intervals use a local approximation, and the
+noiseless standard error is a numerical floor.
+
+[![Local parameter uncertainty and measured x0 interval coverage](docs/figures/uncertainty.png)](docs/figures/uncertainty.png)
 
 ## Autocorrelation and validation
 
-Correlated noise can inflate random-frame validation scores. Compare the noise
-curves with held-out scores from grouped and random splits. Each held-out
-prediction uses a model fitted on the training groups.
+**Noise curves.** White noise and width-3 moving-average noise are compared over
+seeds 21–40. The autocorrelation plot shows sample curves and the stationary
+reference for that noise generator.
 
-![Noise timecourses and autocorrelation curves](docs/figures/noise-autocorrelation.png)
+[![White and moving-average noise timecourses and autocorrelation curves](docs/figures/noise-autocorrelation.png)](docs/figures/noise-autocorrelation.png)
 
-![Grouped and random-frame validation on noise-only responses](docs/figures/leakage.png)
+**Split comparison.** On correlated noise alone, random-frame R² minus grouped
+R² was `+0.459 ± 0.402` across 20 seeds (mean ± SD). Both mean scores were
+negative. A higher score from a random split can occur without a field signal.
+
+[![Grouped and random-frame held-out scores on noise-only responses](docs/figures/leakage.png)](docs/figures/leakage.png)
+
+**Frame overlap.** This supplemental diagnostic compares cross-group cosine
+similarity before and after grouping return sweeps together and pruning similar
+frames. Aperture overlap is one source of dependence to check.
+
+[![Cross-group frame similarity before and after grouping and pruning](docs/figures/fold-leakage.png)](docs/figures/fold-leakage.png)
+
+## Model limits
+
+**Finite grid.** Sigma must be at least one pixel. The upper bound must retain
+at least 99% of a centered Gaussian's sampled mass inside the circular field.
+Fields near an edge can still lose mass. The plot illustrates these grid limits.
+
+[![Sampled Gaussian mass and the effects of widths below one pixel](docs/figures/sigma-guard.png)](docs/figures/sigma-guard.png)
+
+**Multiple lobes.** A single Gaussian can fit only part of a two-lobe response
+and still pass the acceptance rules. The supplemental second-field diagnostic
+measures remaining structure; it has no universal rejection threshold.
+
+[![Single-Gaussian fit to two lobes and residual second-field gain](docs/figures/misspecification.png)](docs/figures/misspecification.png)
+
+## Recorded runtime
+
+These timings cover 1, 10, and 100 units on the recorded machine. Cross-validation
+includes four training-fold fits and a full-data fit. The measurements are
+hardware-specific; the report check preserves them without remeasuring time.
+
+[![Recorded fitting time per unit and cross-validation overhead](docs/figures/runtime.png)](docs/figures/runtime.png)
 
 [Validation tables and conditions](docs/validation.md) include the numeric
 results, seeds, uncertainty assumptions, historical runtimes, and limits.
-[All figures](docs/figures/) include model, mass-limit, and model-mismatch plots.
+[Figure details](docs/figures/) distinguish recorded results from seeded examples
+and supplemental diagnostics.
 
 ## Run
 
@@ -51,11 +121,22 @@ python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install -e '.[viz]'
 python examples/fit_synthetic.py
+```
+
+Expected output for the noiseless synthetic example:
+
+```text
+center=(12.0, 8.0), sigma=5.0, accepted=True
+held-out R²=1.000
+```
+
+To check the recorded measurements and redraw the figures:
+
+```sh
+python scripts/generate_validation_report.py --check
 python scripts/generate_figures.py
 ```
 
-The example recovers `(x0, y0, sigma) = (12.0, 8.0, 5.0)` pixels from a noiseless
-synthetic response, with held-out R² of `1.000`.
 [Usage](docs/usage.md) explains inputs, coordinates, bounds, and plot generation.
 
 ## Files
@@ -71,6 +152,6 @@ synthetic response, with held-out R² of `1.000`.
 | `scripts/` | Report and figure generation |
 | `benchmarks/` | Measured runtime by unit count |
 | `tests/` | Fitting, configuration, stimulus, and reporting checks |
-| `.github/workflows/` | Verification on Python 3.9 and 3.12 |
+| `.github/workflows/` | Python 3.9/3.12 verification and Pages publication |
 
 [Checks and updates](CONTRIBUTING.md) · [MIT license](LICENSE) · [Citation](CITATION.cff)
