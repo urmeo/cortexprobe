@@ -44,10 +44,14 @@ unmeasured behavior as unmeasured.
 
 The project contributor is `urmeo`. Keep commits attributed to that account.
 
+The [video guide](docs/media/#reproduce) explains how to regenerate the synthetic
+demonstrations. FFmpeg is required for that command, alongside the plotting extra.
+Keep media captions tied to the actual inputs, frame counts, and fitting steps.
+
 ## Documentation site
 
 The Pages site renders the README, pipeline guide, usage guide, validation tables,
-and figure gallery from their Markdown sources. Build and preview it locally:
+figure gallery, and videos from their Markdown sources. Build and preview it locally:
 
 ```sh
 python -m pip install -e '.[docs]'
@@ -55,8 +59,8 @@ python scripts/build_docs.py
 python -m http.server 8000 --directory _site
 ```
 
-Open `http://localhost:8000`. The build checks local page, image, data, and anchor
-links. It copies committed plots and data without rerunning the experiments.
+Open `http://localhost:8000`. The build checks local page, image, video, data, and
+anchor links. It copies committed media and data without rerunning the experiments.
 Generated files stay in the ignored `_site/` directory.
 
 GitHub Actions publishes the site on pushes to `main`. The publication workflow

@@ -218,12 +218,14 @@ main.container {
 }
 
 .content figure,
-.content p:has(img) {
+.content p:has(img),
+.content p:has(video) {
   max-width: none;
   margin: 1.75rem 0 2.5rem;
 }
 
-.content img {
+.content img,
+.content video {
   display: block;
   width: 100%;
   max-width: 100%;

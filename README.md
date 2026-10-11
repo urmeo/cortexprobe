@@ -1,7 +1,7 @@
 # CortexProbe
 
 Fit 2D Gaussian population receptive fields to synthetic aperture responses
-with Python, NumPy, and SciPy. Matplotlib draws the figures.
+with Python, NumPy, and SciPy. Matplotlib draws the figures and animations.
 **No neural network or human data has been tested.**
 
 [Documentation](https://urmeo.github.io/cortexprobe/) · [Usage](docs/usage.md) · [Validation](docs/validation.md)
@@ -18,6 +18,27 @@ describes the field. Validation refits each training fold and keeps its paramete
 fixed while scoring the held-out group. [Pipeline details](docs/pipeline.md)
 explain the fitting steps, acceptance rules, uncertainty, and recorded checks.
 Click any figure to view it at full size.
+
+## Watch the workflow
+
+**Apertures and responses.** Moving bar, wedge, and ring masks sample a known
+Gaussian field. The clean response follows their overlap. Each sequence uses its
+own retained frames; playback shows sequence progress.
+
+[![Animated bar, wedge, and ring apertures with their clean response curves](docs/media/aperture-response.gif)](https://urmeo.github.io/cortexprobe/docs/media/#apertures-and-responses)
+
+[Watch the video](https://urmeo.github.io/cortexprobe/docs/media/#apertures-and-responses) · [MP4 file](docs/media/aperture-response.mp4)
+
+**Held-out prediction.** Four separate training-fold fits predict the excluded
+group. This uses the field `(12, 8, 5)`, 20% Gaussian noise, and seed 7. Parameters
+stay fixed during held-out prediction.
+
+[![Animated training groups, excluded observations, and predictions from separately fitted fold models](docs/media/grouped-validation.gif)](https://urmeo.github.io/cortexprobe/docs/media/#held-out-prediction)
+
+[Watch the video](https://urmeo.github.io/cortexprobe/docs/media/#held-out-prediction) · [MP4 file](docs/media/grouped-validation.mp4)
+
+These are illustrations of the existing synthetic example. See
+[video conditions and reproduction](docs/media/) for frame counts and details.
 
 ## From aperture to response
 
@@ -141,6 +162,7 @@ python scripts/generate_figures.py
 ```
 
 [Usage](docs/usage.md) explains inputs, coordinates, bounds, and plot generation.
+The [video guide](docs/media/#reproduce) explains animation generation with FFmpeg.
 
 ## Files
 
@@ -152,7 +174,8 @@ python scripts/generate_figures.py
 | `results/` | Numeric record and measurement provenance |
 | `docs/` | Pipeline, usage, and validation conditions |
 | `docs/figures/` | Generated pipeline diagram, curves, and charts |
-| `scripts/` | Report and figure generation |
+| `docs/media/` | Animated previews, videos, and demonstration conditions |
+| `scripts/` | Report, figure, and video generation |
 | `benchmarks/` | Measured runtime by unit count |
 | `tests/` | Fitting, configuration, stimulus, and reporting checks |
 | `.github/workflows/` | Python 3.9/3.12 verification and Pages publication |

@@ -1,4 +1,4 @@
-"""Render the committed Markdown and plots as a static documentation site."""
+"""Render the committed Markdown, plots, and videos as a static documentation site."""
 
 from __future__ import annotations
 
@@ -23,6 +23,7 @@ PAGES = {
     Path("docs/usage.md"): (Path("docs/usage.html"), "Usage"),
     Path("docs/validation.md"): (Path("docs/validation.html"), "Validation"),
     Path("docs/figures/README.md"): (Path("docs/figures/index.html"), "Figures"),
+    Path("docs/media/README.md"): (Path("docs/media/index.html"), "Videos"),
     Path("CONTRIBUTING.md"): (Path("CONTRIBUTING.html"), "Contributing"),
     Path("SECURITY.md"): (Path("SECURITY.html"), "Security"),
 }
@@ -30,6 +31,25 @@ PAGES = {
 
 def relative_url(target: Path, page: Path) -> str:
     return Path(os.path.relpath(target, page.parent)).as_posix()
+
+
+def image_dimensions(path: Path) -> tuple[int, int]:
+    """Read PNG or GIF dimensions without loading the full image or animation."""
+    with path.open("rb") as image:
+        header = image.read(24)
+    if (
+        len(header) == 24
+        and header[:8] == b"\x89PNG\r\n\x1a\n"
+        and header[8:16] == b"\x00\x00\x00\rIHDR"
+    ):
+        width, height = struct.unpack(">II", header[16:24])
+    elif len(header) >= 10 and header[:6] in (b"GIF87a", b"GIF89a"):
+        width, height = struct.unpack("<HH", header[6:10])
+    else:
+        raise ValueError(f"Unsupported or invalid PNG/GIF header: {path}")
+    if width == 0 or height == 0:
+        raise ValueError(f"Image dimensions must be positive: {path}")
+    return width, height
 
 
 class SiteContent(Treeprocessor):
@@ -74,14 +94,17 @@ class SiteContent(Treeprocessor):
         first_image = True
         for element in root.iter():
             if element.tag == "img":
-                image = ROOT / self.source.parent / unquote(element.attrib["src"])
-                width, height = struct.unpack(">II", image.read_bytes()[16:24])
-                element.set("width", str(width))
-                element.set("height", str(height))
+                url = urlsplit(element.attrib["src"])
+                if not url.scheme and not url.netloc and url.path:
+                    image = (ROOT / self.source.parent / unquote(url.path)).resolve()
+                    image.relative_to(ROOT)
+                    width, height = image_dimensions(image)
+                    element.set("width", str(width))
+                    element.set("height", str(height))
                 element.set("loading", "eager" if first_image else "lazy")
                 element.set("decoding", "async")
                 first_image = False
-            for attribute in ("href", "src"):
+            for attribute in ("href", "src", "poster"):
                 if attribute in element.attrib:
                     element.set(attribute, self.rewrite_url(element.attrib[attribute]))
             if element.tag == "pre":
@@ -167,14 +190,14 @@ class PageLinks(HTMLParser):
     def handle_starttag(self, _tag: str, attrs: list[tuple[str, str | None]]) -> None:
         for name, value in attrs:
             if value is not None:
-                if name in ("href", "src"):
+                if name in ("href", "src", "poster"):
                     self.links.append(value)
                 elif name == "id":
                     self.ids.add(value)
 
 
 def validate_links(output: Path) -> None:
-    """Fail the build if a local page, image, stylesheet, file, or anchor is missing."""
+    """Fail the build if a local page, media file, stylesheet, or anchor is missing."""
     output = output.resolve()
     pages = {}
     for page in output.rglob("*.html"):
@@ -204,6 +227,9 @@ def build_site() -> None:
     shutil.copytree(ROOT / "docs/assets", OUTPUT / "assets")
     for directory, pattern in (
         ("docs/figures", "*.png"),
+        ("docs/media", "*.gif"),
+        ("docs/media", "*.mp4"),
+        ("docs/media", "*.png"),
         ("results", "*.json"),
         ("configs", "*.json"),
     ):
@@ -215,7 +241,13 @@ def build_site() -> None:
         shutil.copy2(ROOT / name, OUTPUT / name)
     (OUTPUT / ".nojekyll").touch()
     validate_links(OUTPUT)
-    print(f"built {OUTPUT.name}: {len(PAGES)} pages, {len(list(OUTPUT.rglob('*.png')))} plots")
+    plots = len(list((OUTPUT / "docs/figures").glob("*.png")))
+    animations = len(list((OUTPUT / "docs/media").glob("*.gif")))
+    videos = len(list((OUTPUT / "docs/media").glob("*.mp4")))
+    print(
+        f"built {OUTPUT.name}: {len(PAGES)} pages, {plots} plots, "
+        f"{animations} GIFs, {videos} videos"
+    )
 
 
 if __name__ == "__main__":

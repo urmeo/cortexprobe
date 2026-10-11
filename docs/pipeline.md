@@ -6,6 +6,9 @@ full-data estimate and validation scores come from separate fits to shared input
 
 [![Inputs branch into full-data estimation and grouped training-fold refits before their outputs are compared](figures/pipeline.png)](figures/pipeline.png)
 
+Watch the [aperture and held-out prediction videos](media/) to see these steps
+on the existing synthetic example.
+
 ## Prepare the inputs
 
 Build bar, wedge, or ring aperture masks on a circular pixel grid. Assign a group

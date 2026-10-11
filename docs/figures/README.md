@@ -30,3 +30,6 @@ fitting paths. The pipeline diagram shows the implemented workflow; the response
 curves illustrate a seeded synthetic run. These figures do not add a new network
 or human-data evaluation.
 The autocorrelation curves describe the noise inputs, not model fit quality.
+
+[Videos](../media/) show aperture movement and held-out prediction, with animated
+previews, playback controls, and the full demonstration conditions.
