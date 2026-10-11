@@ -423,7 +423,7 @@ def test_confidence_interval_accepts_every_fitted_parameter(
 
 @pytest.mark.parametrize("resolution", [32, 64, 96, 128, 160, 200])
 def test_sigma_ceiling_advice_works_at_every_resolution(resolution) -> None:
-    """Check that suggested sigma bounds meet the volume tolerance and suggested resolutions are even."""
+    """Check suggested sigma bounds against the volume tolerance and require even resolutions."""
     import re
 
     from cortexprobe.config import ConfigError

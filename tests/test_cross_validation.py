@@ -104,7 +104,7 @@ def _leak(validator, leaky, response) -> float:
 def test_random_frame_split_leaks_on_autocorrelated_noise(
     validator, leaky_validator, apertures
 ) -> None:
-    """Check random-split score inflation from overlapping apertures and correlated noise over 20 seeds."""
+    """Check random-split score inflation over 20 seeds of temporally correlated noise."""
     leaks = [
         _leak(validator, leaky_validator, autocorrelated_noise(len(apertures), width=3, seed=seed))
         for seed in SEEDS
