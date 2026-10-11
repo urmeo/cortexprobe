@@ -6,7 +6,7 @@ and install the development and plotting dependencies:
 ```sh
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install -e '.[dev,viz]'
+python -m pip install -e '.[dev,viz,docs]'
 ```
 
 Run the same checks as CI before submitting a change:
@@ -43,3 +43,22 @@ and checks in the pull request. Preserve documented limits and report
 unmeasured behavior as unmeasured.
 
 The project contributor is `urmeo`. Keep commits attributed to that account.
+
+## Documentation site
+
+The Pages site renders the README, usage guide, validation tables, and figure
+gallery from their Markdown sources. Build and preview it locally:
+
+```sh
+python -m pip install -e '.[docs]'
+python scripts/build_docs.py
+python -m http.server 8000 --directory _site
+```
+
+Open `http://localhost:8000`. The build checks local page, image, data, and anchor
+links. It copies committed plots and data without rerunning the experiments.
+Generated files stay in the ignored `_site/` directory.
+
+GitHub Actions publishes the site on pushes to `main`. The publication workflow
+can also be run manually from `main`. Fitting and plotting do not require
+the documentation dependency.

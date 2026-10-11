@@ -1,0 +1,376 @@
+:root {
+  color-scheme: light;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #172b43;
+  background: #f5f7fa;
+  --ink: #172b43;
+  --muted: #53647a;
+  --blue: #195f9d;
+  --line: #dce3eb;
+  --surface: #fff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-padding-top: 1.5rem;
+}
+
+body {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+
+a {
+  color: var(--blue);
+  text-underline-offset: 0.18em;
+  text-decoration-thickness: 1px;
+}
+
+a:hover {
+  text-decoration-thickness: 2px;
+}
+
+:focus-visible {
+  outline: 3px solid var(--blue);
+  outline-offset: 4px;
+}
+
+.container,
+.header-inner,
+.footer-inner {
+  width: min(76rem, calc(100% - 3rem));
+  margin-inline: auto;
+}
+
+.skip-link {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  z-index: 10;
+  padding: 0.6rem 1rem;
+  color: var(--surface);
+  background: var(--ink);
+  transform: translateY(-180%);
+}
+
+.skip-link:focus {
+  transform: none;
+}
+
+.site-header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+
+.header-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1.5rem;
+  min-height: 5rem;
+  padding-block: 0.75rem;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  min-height: 2.75rem;
+  color: var(--ink);
+  font-size: 1.3rem;
+  font-weight: 750;
+  letter-spacing: -0.035em;
+  text-decoration: none;
+}
+
+.primary-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+}
+
+.primary-nav a {
+  display: flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0.45rem 0.75rem;
+  color: var(--muted);
+  border-radius: 0.3rem;
+  font-size: 0.95rem;
+  text-decoration: none;
+}
+
+.primary-nav a:hover {
+  color: var(--ink);
+  background: #f1f4f8;
+}
+
+.primary-nav a[aria-current="page"] {
+  color: var(--blue);
+  background: #e8f1fa;
+  font-weight: 650;
+}
+
+main.container {
+  padding-block: clamp(2rem, 4vw, 4rem) 5rem;
+}
+
+.page-intro {
+  margin-bottom: 1.5rem;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.page-intro p {
+  margin: 0.25rem 0;
+}
+
+.eyebrow {
+  color: var(--blue);
+  font-size: 0.8rem;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.content h1,
+.content h2,
+.content h3 {
+  color: var(--ink);
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+}
+
+.content h1 {
+  margin: 0 0 1.25rem;
+  font-size: clamp(2rem, 4.8vw, 3.5rem);
+}
+
+.content h2 {
+  margin: 3rem 0 1rem;
+  font-size: clamp(1.4rem, 2.4vw, 1.85rem);
+}
+
+.content h3 {
+  margin: 2rem 0 0.75rem;
+  font-size: 1.15rem;
+}
+
+.content p,
+.content ul,
+.content ol,
+.content blockquote {
+  max-width: 76ch;
+}
+
+.content p {
+  margin: 1rem 0;
+}
+
+.content ul,
+.content ol {
+  padding-inline-start: 1.5rem;
+}
+
+.content li + li {
+  margin-top: 0.4rem;
+}
+
+.content blockquote {
+  margin: 1.5rem 0;
+  padding: 0.1rem 1.1rem;
+  color: var(--muted);
+  border-left: 3px solid var(--line);
+}
+
+.page-toc {
+  margin: 1.5rem 0 2.5rem;
+  padding: 1rem 1.25rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 0.4rem;
+}
+
+.page-toc .toc-label {
+  margin: 0 0 0.6rem;
+  font-size: 0.9rem;
+  font-weight: 650;
+}
+
+.page-toc .toc > ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.25rem;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.9rem;
+}
+
+.page-toc li + li {
+  margin-top: 0;
+}
+
+.content figure,
+.content p:has(img) {
+  max-width: none;
+  margin: 1.75rem 0 2.5rem;
+}
+
+.content img {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  margin-inline: auto;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 0.3rem;
+}
+
+.content a:has(> img) {
+  display: block;
+  border-radius: 0.3rem;
+}
+
+.content a:hover img {
+  border-color: var(--blue);
+}
+
+.content figcaption {
+  max-width: 76ch;
+  margin-top: 0.65rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.content code {
+  padding: 0.15em 0.35em;
+  background: #eaf0f6;
+  border-radius: 0.2rem;
+  font-family: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 0.9em;
+}
+
+.content pre {
+  max-width: 100%;
+  margin: 1.5rem 0;
+  padding: 1.1rem 1.25rem;
+  overflow-x: auto;
+  background: #edf2f7;
+  border: 1px solid var(--line);
+  border-radius: 0.4rem;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  tab-size: 4;
+}
+
+.content pre code {
+  display: block;
+  padding: 0;
+  background: none;
+  font-size: inherit;
+  overflow-wrap: normal;
+}
+
+.table-scroll {
+  max-width: 100%;
+  margin: 1.5rem 0 2rem;
+  overflow-x: auto;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 0.4rem;
+}
+
+.content table {
+  width: 100%;
+  margin: 1.5rem 0;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.table-scroll table {
+  min-width: 38rem;
+  margin: 0;
+}
+
+.content th,
+.content td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
+
+.content th {
+  background: #edf2f7;
+  font-weight: 650;
+}
+
+.content tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.content sub {
+  color: var(--muted);
+  font-size: 0.82em;
+  vertical-align: baseline;
+}
+
+.site-footer {
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.footer-inner {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.5rem 1.5rem;
+  padding-block: 1.5rem;
+}
+
+@media (max-width: 42rem) {
+  .container,
+  .header-inner,
+  .footer-inner {
+    width: calc(100% - 2rem);
+  }
+
+  .header-inner {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .primary-nav {
+    margin-inline: -0.5rem;
+  }
+
+  .primary-nav a {
+    padding-inline: 0.5rem;
+  }
+
+  .content h2 {
+    margin-top: 2.5rem;
+  }
+
+  .content th,
+  .content td {
+    padding: 0.65rem 0.75rem;
+  }
+
+  .content pre {
+    padding: 1rem;
+    font-size: 0.82rem;
+  }
+}

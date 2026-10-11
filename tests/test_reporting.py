@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import copy
-import importlib.util
 import json
 from dataclasses import replace
 from datetime import date
@@ -14,17 +13,9 @@ import pytest
 from cortexprobe.config import RunConfig
 from cortexprobe.geometry import Grid
 
+from .conftest import load_script
+
 ROOT = Path(__file__).resolve().parent.parent
-
-
-def load_script(filename: str):
-    path = ROOT / "scripts" / filename
-    spec = importlib.util.spec_from_file_location(f"_test_{path.stem}", path)
-    assert spec is not None
-    assert spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
 
 
 @pytest.fixture

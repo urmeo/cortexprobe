@@ -4,6 +4,8 @@ Fit 2D Gaussian population receptive fields to synthetic aperture responses
 with Python, NumPy, and SciPy. Matplotlib draws the figures.
 **No neural network or human data has been tested.**
 
+[Documentation and plots](https://urmeo.github.io/cortexprobe/)
+
 ![Pipeline from moving apertures to synthetic responses, fitting, validation, and results](docs/figures/pipeline.png)
 
 ## From aperture to response
