@@ -1,7 +1,7 @@
-"""Measure the recorded synthetic validation tables in README.md.
+"""Measure the synthetic validation tables in docs/validation.md.
 
-Load configs/validation.json, write outputs/validation.json and splice the four marked README
-tables. --check compares deterministic measurements within tolerance and verifies those tables,
+Load configs/validation.json, write outputs/validation.json and update four marked tables.
+--check compares deterministic measurements within tolerance and verifies those tables,
 without writing files. It does not check supplemental figure pixels or remeasure timings.
 
 Reproduced values retain their original numbers, date and environment. --runtime explicitly
@@ -257,7 +257,7 @@ def footer(environment: dict[str, str], digest: str, generated: str, note: str =
 
 
 def render(report: dict[str, Any]) -> dict[str, str]:
-    """One Markdown block per README section, keyed by its marker name."""
+    """One Markdown block per validation section, keyed by its marker name."""
     blocks = {}
 
     recovery = report["recovery"]
@@ -360,7 +360,7 @@ def splice(text: str, blocks: dict[str, str]) -> str:
             re.DOTALL,
         )
         if not pattern.search(text):
-            raise SystemExit(f"README.md has no generated region named {name!r}")
+            raise SystemExit(f"docs/validation.md has no generated region named {name!r}")
         text = pattern.sub(
             lambda match, body=block: f"{match.group(1)}\n{body}\n{match.group(2)}", text
         )
@@ -368,7 +368,7 @@ def splice(text: str, blocks: dict[str, str]) -> str:
 
 
 def rounded(value: Any, places: int = 6) -> Any:
-    """Record six decimal places; the README tables display fewer places."""
+    """Record six decimal places; the validation tables display fewer places."""
     if isinstance(value, (bool, int)):
         return value
     if isinstance(value, float):
@@ -420,7 +420,7 @@ def measurements(report: dict[str, Any]) -> dict[str, Any]:
     return {key: value for key, value in report.items() if key not in ignored}
 
 
-def run_check(report: dict[str, Any], previous: dict[str, Any], readme: str) -> int:
+def run_check(report: dict[str, Any], previous: dict[str, Any], document: str) -> int:
     """Verify the committed report still reproduces. Writes nothing."""
     if not previous:
         print("no committed report to check against; run without --check first")
@@ -435,11 +435,11 @@ def run_check(report: dict[str, Any], previous: dict[str, Any], readme: str) -> 
         return 1
 
     blocks = render(previous)
-    if splice(readme, blocks) != readme:
-        print("README.md tables do not match the committed report; rerun without --check")
+    if splice(document, blocks) != document:
+        print("docs/validation.md tables do not match the committed report; rerun without --check")
         return 1
     print(
-        "recorded deterministic measurements reproduce within tolerance; README tables match "
+        "recorded deterministic measurements reproduce within tolerance; validation tables match "
         "(timings and figure pixels not rechecked); "
         f"recorded on {previous['environment']['platform']}, checked on "
         f"{current_environment()['platform']} Python {platform.python_version()}"
@@ -463,8 +463,8 @@ def main(argv: list[str] | None = None) -> int:
     )
     arguments = parser.parse_args(argv)
 
-    readme_path = ROOT / "README.md"
-    readme = readme_path.read_text()
+    document_path = ROOT / "docs" / "validation.md"
+    document = document_path.read_text()
 
     grid = Grid(CONFIG.stimulus.resolution)
     sequence = build_apertures(CONFIG.stimulus, "bar")
@@ -491,7 +491,7 @@ def main(argv: list[str] | None = None) -> int:
     report = rounded(report)
 
     if arguments.check:
-        return run_check(report, previous, readme)
+        return run_check(report, previous, document)
 
     running_in = current_environment()
     unchanged = bool(previous) and not drifted(measurements(previous), measurements(report))
@@ -519,17 +519,17 @@ def main(argv: list[str] | None = None) -> int:
             )
 
     blocks = render(report)
-    spliced = splice(readme, blocks)
+    spliced = splice(document, blocks)
 
     OUTPUTS.mkdir(exist_ok=True)
     previous_path.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
 
-    readme_path.write_text(spliced)
+    document_path.write_text(spliced)
 
     print(f"wrote {previous_path.relative_to(ROOT)}")
     state = "unchanged" if unchanged else "updated"
     timing = "re-measured" if refresh else "carried forward"
-    print(f"README tables spliced; measurements {state}, runtime {timing}")
+    print(f"Validation tables updated; measurements {state}, runtime {timing}")
     if unchanged and running_in != report["environment"]:
         print(
             "note: these numbers reproduced here, in a different environment than the one on "

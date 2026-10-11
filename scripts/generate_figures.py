@@ -1,4 +1,4 @@
-"""Regenerate the figures in README.md.
+"""Regenerate the figures in docs/validation.md.
 
 Coverage and timing panels use outputs/validation.json; other panels run supplemental
 synthetic diagnostics. A matching configuration digest is required. Run the report's
@@ -26,6 +26,7 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from generate_validation_report import (
+    CARRIER_WIDTH,
     CONFIG,
     CV_SEEDS,
     GROUND_TRUTH,
@@ -40,6 +41,7 @@ from generate_validation_report import (
     synthesise,
 )
 
+from cortexprobe.config import StimulusConfig
 from cortexprobe.geometry import Grid
 from cortexprobe.prf.fit import MIN_ON_GRID_VOLUME, RESOLUTION_PER_SIGMA, PRFFitter
 from cortexprobe.prf.model import GaussianReceptiveField, predict
@@ -77,7 +79,7 @@ def worst_cross_group_similarity(apertures, groups) -> float:
         test = np.flatnonzero(groups == group)
         train = np.flatnonzero(groups != group)
         if len(train):
-            worst = max(worst, float(similarity[np.ix_(test, train)].max(axis=1).max()))
+            worst = max(worst, float(similarity[np.ix_(test, train)].max()))
     return worst
 
 
@@ -100,7 +102,7 @@ def pixel_coordinates(grid: Grid, x0: float, y0: float) -> tuple[float, float]:
 
 
 def figure_stimulus() -> None:
-    """One row per design, frames coloured by cross-validation group."""
+    """One row per stimulus design, with cross-validation groups labelled."""
     fig, axes = plt.subplots(3, 6, figsize=(8.4, 4.4))
     for row, kind in enumerate(("bar", "wedge", "ring")):
         sequence = build_apertures(CONFIG.stimulus, kind)
@@ -129,20 +131,19 @@ def figure_stimulus() -> None:
 
 def figure_fold_leakage() -> None:
     """Worst held-out/training similarity, grouping by direction versus by axis."""
-    grid_config = CONFIG.stimulus
-    default = grid_config.__class__(resolution=64, n_steps=20)
+    default = StimulusConfig(resolution=64, n_steps=20)
 
     labels, before, after = [], [], []
 
     sequence = build_apertures(default, "bar")
-    by_direction = np.array([d for d in default.directions for _ in range(default.n_steps)])
+    by_direction = sequence.frame_index // 1000
     labels.append("bar\n(8 directions)")
     before.append(worst_cross_group_similarity(sequence.apertures, by_direction))
     after.append(worst_cross_group_similarity(sequence.apertures, sequence.group))
 
     for kind in ("wedge", "ring"):
         unpruned = build_apertures(
-            grid_config.__class__(resolution=64, n_steps=20, max_fold_similarity=0.999), kind
+            StimulusConfig(resolution=64, n_steps=20, max_fold_similarity=0.999), kind
         )
         pruned = build_apertures(default, kind)
         labels.append(kind)
@@ -215,7 +216,7 @@ def figure_recovery() -> None:
             lw=2.2,
             color=WARN,
             zorder=3,
-            label="largest of 5",
+            label=f"largest of {len(GROUND_TRUTH)}",
         )
         axis.plot(
             noise_pct,
@@ -225,7 +226,7 @@ def figure_recovery() -> None:
             lw=2.2,
             color=ACCENT,
             zorder=3,
-            label="mean of 5",
+            label=f"mean of {len(GROUND_TRUTH)}",
         )
         for column, value in enumerate(data.max(axis=0)):
             shown = 0.0 if value < 1e-6 else value
@@ -248,47 +249,49 @@ def figure_recovery() -> None:
         axis.grid(axis="y", color="#eef1f4", lw=1)
         axis.set_axisbelow(True)
     axes[0].legend(frameon=False, fontsize=8, loc="upper left")
-    fig.suptitle("Recovery error: 5 synthetic fields", fontsize=11, fontweight="bold")
+    fig.suptitle(
+        f"Recovery error: {len(GROUND_TRUTH)} synthetic fields", fontsize=11, fontweight="bold"
+    )
     fig.tight_layout(rect=(0, 0, 1, 0.92))
     fig.savefig(FIGURES / "recovery.png", dpi=150)
     plt.close(fig)
 
 
 def figure_leakage() -> None:
-    """Grouped and random-frame held-out scores over 20 seeds."""
+    """Grouped and random-frame held-out scores for the validation seeds."""
     grid = Grid(CONFIG.stimulus.resolution)
     sequence = build_apertures(CONFIG.stimulus, "bar")
     apertures = sequence.as_float()
     grouped = CrossValidator(grid, apertures, sequence.group, CONFIG.fit)
     shuffled = np.random.default_rng(SPLIT_SEED).permutation(len(apertures)) % 4
-    leaky = CrossValidator(grid, apertures, shuffled, CONFIG.fit)
+    random_split = CrossValidator(grid, apertures, shuffled, CONFIG.fit)
 
     fig, axes = plt.subplots(1, 2, figsize=(7.6, 3.2), sharey=True)
     for axis, label in zip(axes, ("white", "autocorrelated")):
-        honest, split = [], []
+        grouped_scores, random_scores = [], []
         for seed in CV_SEEDS:
             if label == "white":
                 response = np.random.default_rng(seed).normal(size=len(apertures))
             else:
-                response = autocorrelated_noise(len(apertures), 3, seed)
-            honest.append(grouped.validate_unit(response).cv_r2)
-            split.append(leaky.validate_unit(response).cv_r2)
+                response = autocorrelated_noise(len(apertures), CARRIER_WIDTH, seed)
+            grouped_scores.append(grouped.validate_unit(response).cv_r2)
+            random_scores.append(random_split.validate_unit(response).cv_r2)
 
-        for h, s in zip(honest, split):
-            axis.plot([0, 1], [h, s], color="#8c959f", lw=0.7, zorder=1)
-        axis.scatter(np.zeros(len(honest)), honest, s=22, color=GOOD, zorder=2, label="grouped")
-        axis.scatter(np.ones(len(split)), split, s=22, color=WARN, zorder=2, label="random split")
+        for grouped_score, random_score in zip(grouped_scores, random_scores):
+            axis.plot([0, 1], [grouped_score, random_score], color="#8c959f", lw=0.7, zorder=1)
+        axis.scatter(np.zeros(len(CV_SEEDS)), grouped_scores, s=22, color=GOOD, zorder=2)
+        axis.scatter(np.ones(len(CV_SEEDS)), random_scores, s=22, color=WARN, zorder=2)
         axis.axhline(0, color=INK, lw=1)
         axis.set_xticks([0, 1])
         axis.set_xticklabels(["grouped\n(axis)", "random\nframe split"])
         axis.set_xlim(-0.35, 1.35)
-        leak = np.mean(np.asarray(split) - np.asarray(honest))
+        differences = np.asarray(random_scores) - np.asarray(grouped_scores)
         axis.set_title(
-            f"{label} noise\nmean leak {leak:+.3f}, "
-            f"{int((np.asarray(split) > np.asarray(honest)).sum())}/{len(CV_SEEDS)} positive"
+            f"{label} noise\nmean difference {differences.mean():+.3f}, "
+            f"{int((differences > 0).sum())}/{len(CV_SEEDS)} positive"
         )
     axes[0].set_ylabel("held-out R²")
-    fig.suptitle("Grouped and random-split validation: 20 noise seeds", fontsize=10)
+    fig.suptitle(f"Grouped and random-split validation: {len(CV_SEEDS)} noise seeds", fontsize=10)
     fig.tight_layout(rect=(0, 0, 1, 0.92))
     fig.savefig(FIGURES / "leakage.png", dpi=150)
     plt.close(fig)
@@ -456,7 +459,7 @@ def figure_sigma_guard() -> None:
 
 
 def figure_uncertainty() -> None:
-    """Standard errors grow with noise, and the intervals are checked for coverage."""
+    """Plot x0 standard errors, interval widths, and measured interval coverage."""
     grid = Grid(CONFIG.stimulus.resolution)
     apertures = build_apertures(CONFIG.stimulus, "bar").as_float()
     fitter = PRFFitter(grid, apertures, CONFIG.fit)
@@ -490,7 +493,7 @@ def figure_uncertainty() -> None:
         )
     axes[0].set_xlabel("noise (fraction of signal SD)")
     axes[0].set_ylabel("pixels")
-    axes[0].set_title("Uncertainty tracks the noise")
+    axes[0].set_title("Standard error and interval width")
     axes[0].legend(frameon=False, fontsize=8, loc="upper left")
     axes[0].margins(y=0.24)
 
@@ -499,9 +502,15 @@ def figure_uncertainty() -> None:
     lows = [r["ci_low"] for r in coverage]
     highs = [r["ci_high"] for r in coverage]
     x = np.arange(len(labels))
-    axes[1].axhline(0.95, color=INK, ls="--", lw=1)
+    nominal = report["uncertainty"]["nominal"]
+    axes[1].axhline(nominal, color=INK, ls="--", lw=1)
     axes[1].annotate(
-        "nominal 0.95", (len(labels) - 0.5, 0.951), ha="right", va="bottom", fontsize=8, color=INK
+        f"nominal {nominal:.2f}",
+        (len(labels) - 0.5, nominal + 0.001),
+        ha="right",
+        va="bottom",
+        fontsize=8,
+        color=INK,
     )
     axes[1].errorbar(
         x,
@@ -526,7 +535,7 @@ def figure_uncertainty() -> None:
     axes[1].set_xticklabels(labels, fontsize=8)
     axes[1].set_ylim(0.86, 1.0)
     axes[1].set_ylabel("empirical coverage")
-    axes[1].set_title(f"Coverage of the 95 % interval (n = {coverage[0]['n']} each)")
+    axes[1].set_title(f"Coverage of the 95 % x0 interval (n = {coverage[0]['n']} each)")
 
     for axis in axes:
         axis.grid(axis="y", color="#eef1f4", lw=1)
@@ -542,7 +551,7 @@ def figure_uncertainty() -> None:
 
 
 def figure_misspecification() -> None:
-    """A single Gaussian cannot represent two lobes, and the diagnostic says so."""
+    """Compare residual second-field gain for single- and two-lobe responses."""
     grid = Grid(CONFIG.stimulus.resolution)
     apertures = build_apertures(CONFIG.stimulus, "bar").as_float()
     fitter = PRFFitter(grid, apertures, CONFIG.fit)
@@ -586,7 +595,8 @@ def figure_misspecification() -> None:
     axes[0].add_patch(circle)
     axes[0].set_xticks([])
     axes[0].set_yticks([])
-    axes[0].set_title(f"two lobes, one fitted pRF\n$R^2$ = {fit.r2:.4f}, accepted", fontsize=9)
+    status = "accepted" if fit.accepted else "rejected"
+    axes[0].set_title(f"two lobes, one fitted pRF\n$R^2$ = {fit.r2:.4f}, {status}", fontsize=9)
     axes[0].set_xlabel(f"fitted $\\sigma$ = {fit.sigma:.2f} px", fontsize=8)
 
     for (label, values), colour, marker in zip(

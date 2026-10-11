@@ -1,137 +1,89 @@
 # CortexProbe
 
-**Receptive fields · Synthetic data · Grouped validation · Uncertainty**
+CortexProbe fits 2D Gaussian population receptive fields to responses from moving
+apertures. It estimates each field's center and width, fits response amplitude
+and baseline, and provides grouped cross-validation and local parameter
+uncertainty. It generates bar, wedge, and ring aperture sequences. It uses
+Python 3.9+, NumPy, and SciPy. Matplotlib is optional for figures.
 
-## Overview
+The tests and recorded results use synthetic responses with known fields.
+No neural network or human data has been tested. The package has no network
+loader or activation runner.
 
-Fit 2D Gaussian receptive fields to synthetic aperture responses. **No network or human data has been tested.**
-
-### Data flow
-
-```mermaid
-flowchart LR
-    A[Configuration] --> B[Bar / wedge / ring]
-    B --> C[Synthetic responses]
-    C --> D[Coarse search + refinement]
-    D --> E[Grouped validation]
-    E --> F[Tables + figures]
-```
-
-<p align="center"><img src="outputs/model.png" alt="Gaussian overlap prediction and synthetic fitting" width="960"></p>
-
-## Results
-
-**64 px · 80 bar frames · 4 groups · 300 candidates · σ 1 to 10 px**
-
-### Recovery
-
-<!-- BEGIN GENERATED: recovery -->
-| Condition | Position error, largest (px) | mean (px) | Sigma error, largest (%) | mean (%) | Minimum R² |
-|---|---|---|---|---|---|
-| Noiseless | 0.000 | 0.000 | 0.0 | 0.0 | 1.0000 |
-| 20% noise | 0.287 | 0.197 | 5.2 | 2.3 | 0.9696 |
-| 50% noise | 0.772 | 0.511 | 12.8 | 5.6 | 0.8326 |
-| Pure noise | n/a | n/a | n/a | n/a | **40 / 40 rejected** |
-
-<sub>n = 5, shared noise seed 7; pure noise 0/40 accepted (best R² 0.1947, threshold 0.2). Recorded on macOS-26.6.1 arm64, Python 3.12.13, NumPy 2.5.2, SciPy 1.18.0 | config digest `4d6a856a499e` | generated 2026-08-19</sub>
-<!-- END GENERATED: recovery -->
-
-<p align="center"><img src="outputs/recovery.png" alt="Synthetic position and size recovery across noise levels" width="960"></p>
-
-### Uncertainty
-
-<!-- BEGIN GENERATED: uncertainty -->
-| Noise | Fitted x0 | SE | 95 % CI width |
-|---|---|---|---|
-| 0.0 | 12.000 | 0.0000 | 0.000 |
-| 0.1 | 11.962 | 0.0961 | 0.383 |
-| 0.3 | 11.909 | 0.2806 | 1.118 |
-| 0.6 | 11.881 | 0.5354 | 2.133 |
-
-| Position | Noise | n | Coverage | 95 % Wald CI |
-|---|---|---|---|---|
-| interior | 0.2 | 200 | 0.935 | [0.901, 0.969] |
-| interior | 0.5 | 200 | 0.930 | [0.895, 0.965] |
-| near edge | 0.2 | 200 | 0.930 | [0.895, 0.965] |
-| near edge | 0.5 | 200 | 0.915 | [0.876, 0.954] |
-
-<sub>Nominal 95%; paired seeds across cells; noiseless SE is a numerical floor. Recorded on macOS-26.6.1 arm64, Python 3.12.13, NumPy 2.5.2, SciPy 1.18.0 | config digest `4d6a856a499e` | generated 2026-08-19</sub>
-<!-- END GENERATED: uncertainty -->
-
-<p align="center"><img src="outputs/uncertainty.png" alt="Linearized uncertainty and empirical interval coverage" width="960"></p>
-
-### Validation
-
-<!-- BEGIN GENERATED: cross_validation -->
-| Response | n seeds | Grouped CV | Random-split CV | Leak | Leak positive |
-|---|---|---|---|---|---|
-| White | 20 | -0.248 ± 0.135 | -0.339 ± 0.192 | -0.091 ± 0.231 | 8 / 20 |
-| Autocorrelated | 20 | -0.624 ± 0.385 | -0.164 ± 0.189 | +0.459 ± 0.402 | 17 / 20 |
-
-<sub>Mean ± SD, seeds 21-40; width-3 boxcar lag-1 0.651 ± 0.086 (theory 0.667). Recorded on macOS-26.6.1 arm64, Python 3.12.13, NumPy 2.5.2, SciPy 1.18.0 | config digest `4d6a856a499e` | generated 2026-08-19</sub>
-<!-- END GENERATED: cross_validation -->
-
-<p align="center"><img src="outputs/leakage.png" alt="Grouped versus random split validation for correlated noise" width="960"></p>
-
-### Runtime
-
-<!-- BEGIN GENERATED: runtime -->
-| Units | Fit (s) | Per unit (ms) | CV (s) | CV factor |
-|---|---|---|---|---|
-| 1 | 0.009 | 8.5 | 0.040 | 4.7× |
-| 10 | 0.078 | 7.8 | 0.391 | 5.0× |
-| 100 | 0.792 | 7.9 | 3.978 | 5.0× |
-
-<sub>Hardware timings; 4 folds plus the full fit; not remeasured by --check. Recorded on macOS-27.0.1 arm64, Python 3.12.13, NumPy 2.5.3, SciPy 1.18.1 | config digest `4d6a856a499e` | generated 2026-10-06</sub>
-<!-- END GENERATED: runtime -->
-
-[Recorded configuration](configs/validation.json) · [Numeric record](outputs/validation.json) · [All figures](outputs/)
-
-## Method
-
-| Step | Contract |
-|---|---|
-| Prediction | Gaussian × aperture; sum over pixels |
-| Fit | Search x, y, σ; project amplitude and baseline |
-| Acceptance | Converged; R² threshold; positive amplitude; σ off bounds |
-| Validation | Whole sweep groups; overlap pruning; distinct frame degrees of freedom |
-| Uncertainty | Local Jacobian; singular geometry gives undefined standard errors |
-| Normalization | Amplitude convention; free amplitude absorbs peak versus volume scaling |
-
-## Verify
+## Install
 
 ```sh
-python -m pip install -e '.[dev,viz]'
-python -m pytest --cov
-python -m ruff check .
-python -m mypy
-python scripts/generate_validation_report.py --check
-python scripts/generate_figures.py
+git clone https://github.com/urmeo/cortexprobe.git
+cd cortexprobe
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e .
 ```
 
-Use `PRFFitter.fit_unit(response)` or `fit_all(activations)` with `(frames, units)` arrays. `CrossValidator` requires one finite group label per frame.
+## Fit a synthetic response
 
-## Tech stack
+Run this Python code from the installed environment:
 
-| Task | Tool |
-|---|---|
-| Numerics | Python 3.9+; NumPy; SciPy |
-| Figures | Matplotlib |
-| Checks | pytest; Ruff; strict mypy; coverage floor 85% |
+```python
+from cortexprobe import FitConfig, StimulusConfig
+from cortexprobe.geometry import Grid
+from cortexprobe.prf.fit import PRFFitter
+from cortexprobe.prf.model import GaussianReceptiveField, predict
+from cortexprobe.prf.validation import CrossValidator
+from cortexprobe.stimuli import build_apertures
 
-## Limits
+grid = Grid(64)
+sequence = build_apertures(StimulusConfig(resolution=64, n_steps=20, directions=(0, 45, 90, 135)))
+apertures = sequence.as_float()
+config = FitConfig(grid_size=10, sigma_bounds=(1.0, 10.0))
 
-1. Synthetic only: 5 known fields share one noise seed per condition. Network depth, lesions and seed variation remain untested.
-2. Intervals use a local approximation; coverage uses 200 trials per cell with shared seeds. No pooled independent trial claim.
-3. The σ ceiling guards centered fields; edges truncate mass. A single Gaussian can miss multiple lobes; its diagnostic has no universal cutoff.
+known_field = GaussianReceptiveField(x0=12.0, y0=8.0, sigma=5.0)
+response = 3.0 * predict(known_field.weights(grid), apertures) + 0.5
+fit = PRFFitter(grid, apertures, config).fit_unit(response)
+print(f"center=({fit.x0:.1f}, {fit.y0:.1f}), sigma={fit.sigma:.1f}, accepted={fit.accepted}")
 
-## References
+validated = CrossValidator(grid, apertures, sequence.group, config).validate_unit(response)
+print(f"held-out R²={validated.cv_r2:.3f}")
+```
 
-| Reference | Use |
-|---|---|
-| [Dumoulin & Wandell, 2008](https://doi.org/10.1016/j.neuroimage.2007.09.034) | Moving aperture pRF method; adapted without haemodynamic convolution, in pixels |
-| [Kriegeskorte et al., 2009](https://doi.org/10.1038/nn.2303) | Independent selection and validation |
-| [SciPy least squares](https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html) | Bounded refinement |
-| [SciPy covariance guidance](https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.curve_fit.html) | Rank and linear approximation limits |
+Expected output:
 
-[MIT License](LICENSE) · [Citation](CITATION.cff)
+```text
+center=(12.0, 8.0), sigma=5.0, accepted=True
+held-out R²=1.000
+```
+
+Coordinates and sigma are in pixels, with the origin at the grid center, x
+rightward, and y upward. Predictions sum Gaussian weights over each aperture;
+there is no haemodynamic convolution.
+
+`fit_unit` takes one response per frame. `fit_all` takes an array shaped
+`(frames, units)`. Apertures have shape `(frames, height, width)` and must match
+the grid. Use the retained `sequence.n_frames` when preparing responses:
+aperture generation can prune similar frames across groups. `CrossValidator`
+requires one finite numeric group label per frame and at least two groups.
+It fits separate models on training folds and keeps their geometry, amplitude,
+and baseline fixed for held-out scoring.
+
+## Validation and limits
+
+The recorded experiments measure recovery of known fields, noise rejection,
+interval coverage, grouped versus random-split scores, and runtime.
+[Validation details](docs/validation.md) include the results, seeds, conditions,
+and instructions to reproduce them.
+
+- Network depth, lesions, and variation across network seeds remain untested.
+  `ModelConfig` stores reserved metadata; it does not load a model.
+- A fit's `accepted` flag uses convergence, in-sample R², positive amplitude,
+  and sigma bounds. It does not require a held-out score.
+- Sigma must be at least one pixel. The upper bound must retain at least 99%
+  of a centered Gaussian's sampled mass in the circular field, roughly requiring
+  `sigma <= resolution / 6.1`. Near-edge fields can still lose mass.
+- Confidence intervals use a local approximation. Singular geometry produces
+  undefined errors. A single Gaussian can miss multiple lobes; the second-field
+  diagnostic has no universal cutoff.
+
+For tests, formatting, type checks, and report updates, see
+[Contributing](CONTRIBUTING.md).
+
+[MIT license](LICENSE) · [Citation](CITATION.cff)

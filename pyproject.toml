@@ -22,6 +22,10 @@ dependencies = [
   "scipy>=1.11,<2",
 ]
 
+[project.urls]
+Repository = "https://github.com/urmeo/cortexprobe"
+Issues = "https://github.com/urmeo/cortexprobe/issues"
+
 [project.optional-dependencies]
 viz = ["matplotlib>=3.7,<4"]
 dev = [

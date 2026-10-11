@@ -1,14 +1,16 @@
 cff-version: 1.2.0
 title: "CortexProbe: synthetic receptive field fitting and grouped validation"
-message: "If you use this software, please cite it as below."
+message: "If you use CortexProbe, cite this software."
 type: software
 authors:
   - given-names: Urme
 license: MIT
 version: 0.2.0
+repository-code: "https://github.com/urmeo/cortexprobe"
 abstract: >-
   Gaussian receptive field fitting with synthetic moving apertures, grouped
-  validation and local parameter uncertainty. No network or human data tested.
+  validation and local parameter uncertainty. Validation uses synthetic responses;
+  no neural network or human data has been tested.
 keywords:
   - neuroscience
   - population-receptive-field

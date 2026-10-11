@@ -103,16 +103,15 @@ class ApertureGenerator(ABC):
             )
 
         keep = _prune_leaking_frames(stack, group_array, self.config.max_fold_similarity)
-        if len(np.unique(group_array)) >= 2 > len(np.unique(group_array[keep])):
+        original_group_count = len(np.unique(group_array))
+        retained_group_count = len(np.unique(group_array[keep]))
+        if original_group_count >= 2 and retained_group_count < 2:
             raise ConfigError(
-                f"{self.kind} apertures define "
-                f"{len(np.unique(group_array))} cross-validation groups but only "
-                f"{len(np.unique(group_array[keep]))} survive pruning at "
-                f"max_fold_similarity={self.config.max_fold_similarity}; raise the threshold, or "
-                "narrow the aperture (ring_thickness_frac, wedge_span_deg, bar_width_frac) so "
-                "frames in different groups share fewer pixels. Raising n_steps does not help: "
-                "it shortens the step while leaving the aperture as wide, so neighbouring frames "
-                "overlap more, not less"
+                f"{self.kind} apertures define {original_group_count} cross-validation groups "
+                f"but only {retained_group_count} survive pruning at "
+                f"max_fold_similarity={self.config.max_fold_similarity}. Raise the threshold or "
+                "narrow the aperture (ring_thickness_frac, wedge_span_deg, bar_width_frac). "
+                "Raising n_steps does not help: smaller steps increase overlap between frames."
             )
         return ApertureSequence(
             apertures=stack[keep],
@@ -133,7 +132,7 @@ class ApertureGenerator(ABC):
 
 
 class BarSweep(ApertureGenerator):
-    """A bar traverses the field perpendicular to each direction.
+    """A bar moves along each direction, with its long axis perpendicular to travel.
 
     Groups use sweep axis ``direction % 180``. Symmetric travel makes a 180-degree return
     sweep duplicate the outbound frames in reverse order. With no haemodynamic convolution,

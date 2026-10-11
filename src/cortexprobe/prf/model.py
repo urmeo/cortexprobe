@@ -17,7 +17,7 @@ from ..geometry import Grid
 
 
 class ReceptiveField(ABC):
-    """A normalised weighting over the visual field."""
+    """Spatial weights over the visual field."""
 
     @abstractmethod
     def weights(self, grid: Grid) -> FloatArray:

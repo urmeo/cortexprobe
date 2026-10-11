@@ -37,7 +37,7 @@ def record():
     return json.loads((ROOT / "outputs" / "validation.json").read_text())
 
 
-def marked_readme(script, record):
+def marked_document(script, record):
     empty = "\n".join(
         f"<!-- BEGIN GENERATED: {name} -->\n<!-- END GENERATED: {name} -->"
         for name in ("recovery", "uncertainty", "cross_validation", "runtime")
@@ -49,7 +49,9 @@ def prepare_run(script, record, monkeypatch, tmp_path):
     outputs = tmp_path / "outputs"
     outputs.mkdir()
     (outputs / "validation.json").write_text(json.dumps(record))
-    (tmp_path / "README.md").write_text(marked_readme(script, record))
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "validation.md").write_text(marked_document(script, record))
     monkeypatch.setattr(script, "ROOT", tmp_path)
     monkeypatch.setattr(script, "OUTPUTS", outputs)
     for section in ("recovery", "uncertainty", "cross_validation"):
@@ -92,20 +94,20 @@ def test_generated_blocks_use_recorded_counts_and_paired_coverage(report_script,
 
 
 def test_check_accepts_tolerated_measurements_but_rejects_drift(report_script, record, capsys):
-    readme = marked_readme(report_script, record)
+    document = marked_document(report_script, record)
     fresh = copy.deepcopy(record)
     fresh["recovery"]["rows"][1]["position_mean"] += 0.000001
-    assert report_script.run_check(fresh, record, readme) == 0
+    assert report_script.run_check(fresh, record, document) == 0
     assert "within tolerance" in capsys.readouterr().out
     fresh["recovery"]["rows"][1]["position_mean"] += 0.01
-    assert report_script.run_check(fresh, record, readme) == 1
+    assert report_script.run_check(fresh, record, document) == 1
     assert "recovery.rows.1.position_mean" in capsys.readouterr().out
 
 
-def test_check_rejects_a_manually_edited_readme_table(report_script, record, capsys):
-    readme = marked_readme(report_script, record)
-    changed = readme.replace("| 0.2 |", "| 0.3 |", 1)
-    assert changed != readme
+def test_check_rejects_a_manually_edited_validation_table(report_script, record, capsys):
+    document = marked_document(report_script, record)
+    changed = document.replace("| 0.2 |", "| 0.3 |", 1)
+    assert changed != document
     assert report_script.run_check(record, record, changed) == 1
     assert "tables do not match" in capsys.readouterr().out
 
@@ -118,7 +120,7 @@ def test_check_ignores_separately_recorded_hardware_provenance(report_script, re
         runtime_generated="2026-10-06",
         runtime_config_digest="other-config",
     )
-    assert report_script.run_check(fresh, record, marked_readme(report_script, record)) == 0
+    assert report_script.run_check(fresh, record, marked_document(report_script, record)) == 0
 
 
 def test_report_rejects_conflicting_check_and_runtime_flags(report_script, capsys):
