@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from .arrays import BoolArray, FloatArray
+from .arrays import BoolArray, FloatArray, IntArray
 from .config import ConfigError, StimulusConfig
 from .geometry import Grid
 
@@ -25,20 +25,20 @@ def frame_similarity(stack: BoolArray) -> FloatArray:
     return similarity
 
 
-def _prune_leaking_frames(stack: BoolArray, groups: np.ndarray, threshold: float) -> np.ndarray:
+def _prune_leaking_frames(stack: BoolArray, groups: np.ndarray, threshold: float) -> IntArray:
     """Keep indices after pruning all cross-group cosine overlaps above ``threshold``.
 
     Remove the frame in the most surviving violations, then repeat until none remain.
     """
     similarity = frame_similarity(stack)
-    violating = (similarity > threshold) & (groups[:, None] != groups[None, :])
+    violations = (similarity > threshold) & (groups[:, None] != groups[None, :])
     keep = np.ones(len(stack), dtype=bool)
     while True:
-        live = violating & keep[:, None] & keep[None, :]
-        counts = live.sum(axis=1)
-        if not counts.any():
+        active_violations = violations & keep[:, None] & keep[None, :]
+        violation_counts = active_violations.sum(axis=1)
+        if not violation_counts.any():
             return np.flatnonzero(keep)
-        keep[int(np.argmax(counts))] = False
+        keep[int(np.argmax(violation_counts))] = False
 
 
 @dataclass(frozen=True)
@@ -103,16 +103,15 @@ class ApertureGenerator(ABC):
             )
 
         keep = _prune_leaking_frames(stack, group_array, self.config.max_fold_similarity)
-        if len(np.unique(group_array)) >= 2 > len(np.unique(group_array[keep])):
+        original_group_count = len(np.unique(group_array))
+        retained_group_count = len(np.unique(group_array[keep]))
+        if original_group_count >= 2 and retained_group_count < 2:
             raise ConfigError(
-                f"{self.kind} apertures define "
-                f"{len(np.unique(group_array))} cross-validation groups but only "
-                f"{len(np.unique(group_array[keep]))} survive pruning at "
-                f"max_fold_similarity={self.config.max_fold_similarity}; raise the threshold, or "
-                "narrow the aperture (ring_thickness_frac, wedge_span_deg, bar_width_frac) so "
-                "frames in different groups share fewer pixels. Raising n_steps does not help: "
-                "it shortens the step while leaving the aperture as wide, so neighbouring frames "
-                "overlap more, not less"
+                f"{self.kind} apertures define {original_group_count} cross-validation groups "
+                f"but only {retained_group_count} survive pruning at "
+                f"max_fold_similarity={self.config.max_fold_similarity}. Raise the threshold or "
+                "narrow the aperture (ring_thickness_frac, wedge_span_deg, bar_width_frac). "
+                "Raising n_steps does not help: smaller steps increase overlap between frames."
             )
         return ApertureSequence(
             apertures=stack[keep],
@@ -133,7 +132,7 @@ class ApertureGenerator(ABC):
 
 
 class BarSweep(ApertureGenerator):
-    """A bar traverses the field perpendicular to each direction.
+    """A bar moves along each direction, with its long axis perpendicular to travel.
 
     Groups use sweep axis ``direction % 180``. Symmetric travel makes a 180-degree return
     sweep duplicate the outbound frames in reverse order. With no haemodynamic convolution,
@@ -150,6 +149,8 @@ class BarSweep(ApertureGenerator):
         grid = self.grid
         half_width = self.config.bar_width_px / 2.0
         travel = np.linspace(-grid.radius, grid.radius, self.config.n_steps)
+        # Keep existing short-sweep labels while reserving enough indices for longer sweeps.
+        label_stride = max(1000, self.config.n_steps)
 
         frames: list[BoolArray] = []
         labels: list[int] = []
@@ -159,7 +160,7 @@ class BarSweep(ApertureGenerator):
             projection = grid.x * np.cos(theta) + grid.y * np.sin(theta)
             for step, offset in enumerate(travel):
                 frames.append(np.abs(projection - offset) <= half_width)
-                labels.append(direction * 1000 + step)
+                labels.append(direction * label_stride + step)
                 groups.append(direction % 180)
         return frames, labels, groups
 

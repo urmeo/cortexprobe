@@ -16,12 +16,12 @@ class ConfigError(ValueError):
     """Raised when a configuration is internally inconsistent."""
 
 
-def _integer(value: int, name: str) -> None:
+def _require_integer(value: int, name: str) -> None:
     if not isinstance(value, int) or isinstance(value, bool):
         raise ConfigError(f"{name} must be an integer")
 
 
-def _finite(value: float, name: str) -> None:
+def _require_finite(value: float, name: str) -> None:
     try:
         valid = (
             isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
@@ -32,14 +32,14 @@ def _finite(value: float, name: str) -> None:
         raise ConfigError(f"{name} must be finite")
 
 
-def _restore(annotation: Any, value: Any) -> Any:
+def _restore_tuples(annotation: Any, value: Any) -> Any:
     """Restore tuples from JSON lists so configuration equality survives a round trip."""
-    if get_origin(annotation) is tuple:
-        if not isinstance(value, (list, tuple)):
-            raise TypeError("tuple fields require a list or tuple")
-        (element_type, *_) = get_args(annotation) or (Any,)
-        return tuple(_restore(element_type, item) for item in value)
-    return value
+    if get_origin(annotation) is not tuple:
+        return value
+    if not isinstance(value, (list, tuple)):
+        raise TypeError("tuple fields require a list or tuple")
+    element_type = (get_args(annotation) or (Any,))[0]
+    return tuple(_restore_tuples(element_type, item) for item in value)
 
 
 @dataclass(frozen=True)
@@ -53,13 +53,15 @@ class ConfigBase:
     def from_dict(cls: type[T], payload: dict[str, Any]) -> T:
         if not isinstance(payload, dict):
             raise ConfigError(f"{cls.__name__} must be an object")
-        hints = get_type_hints(cls)
-        known = {field.name for field in fields(cls)}
-        unexpected = set(payload) - known
-        if unexpected:
-            raise ConfigError(f"{cls.__name__} received unknown keys: {sorted(unexpected)}")
+        field_types = get_type_hints(cls)
+        field_names = {field.name for field in fields(cls)}
+        unknown_keys = set(payload) - field_names
+        if unknown_keys:
+            raise ConfigError(f"{cls.__name__} received unknown keys: {sorted(unknown_keys)}")
         try:
-            restored = {name: _restore(hints[name], value) for name, value in payload.items()}
+            restored = {
+                name: _restore_tuples(field_types[name], value) for name, value in payload.items()
+            }
         except TypeError as exc:
             raise ConfigError(f"{cls.__name__} has an invalid container field") from exc
         return cls(**restored)
@@ -82,8 +84,8 @@ class StimulusConfig(ConfigBase):
     max_fold_similarity: float = 0.75
 
     def __post_init__(self) -> None:
-        _integer(self.resolution, "resolution")
-        _integer(self.n_steps, "n_steps")
+        _require_integer(self.resolution, "resolution")
+        _require_integer(self.n_steps, "n_steps")
         if self.resolution < 8:
             raise ConfigError("resolution must be at least 8 pixels")
         if self.resolution % 2:
@@ -92,22 +94,22 @@ class StimulusConfig(ConfigBase):
             )
         if self.n_steps < 2:
             raise ConfigError("n_steps must be at least 2")
-        _finite(self.bar_width_frac, "bar_width_frac")
+        _require_finite(self.bar_width_frac, "bar_width_frac")
         if not 0.0 < self.bar_width_frac < 1.0:
             raise ConfigError("bar_width_frac must lie in (0, 1)")
         if not isinstance(self.directions, (tuple, list)) or not self.directions:
             raise ConfigError("at least one sweep direction is required")
         for direction in self.directions:
-            _integer(direction, "directions")
+            _require_integer(direction, "directions")
         if any(not 0 <= d < 360 for d in self.directions):
             raise ConfigError("directions must be degrees in [0, 360)")
-        _finite(self.wedge_span_deg, "wedge_span_deg")
+        _require_finite(self.wedge_span_deg, "wedge_span_deg")
         if not 0.0 < self.wedge_span_deg <= 360.0:
             raise ConfigError("wedge_span_deg must lie in (0, 360]")
-        _finite(self.ring_thickness_frac, "ring_thickness_frac")
+        _require_finite(self.ring_thickness_frac, "ring_thickness_frac")
         if not 0.0 < self.ring_thickness_frac < 1.0:
             raise ConfigError("ring_thickness_frac must lie in (0, 1)")
-        _finite(self.max_fold_similarity, "max_fold_similarity")
+        _require_finite(self.max_fold_similarity, "max_fold_similarity")
         if not 0.0 < self.max_fold_similarity < 1.0:
             raise ConfigError("max_fold_similarity must lie in (0, 1)")
 
@@ -143,11 +145,11 @@ class ModelConfig(ConfigBase):
             raise ConfigError("tap layers must be nonempty names")
         if len(set(self.layers)) != len(self.layers):
             raise ConfigError("tap layers must be unique")
-        _integer(self.pool_to, "pool_to")
+        _require_integer(self.pool_to, "pool_to")
         if self.pool_to < 2:
             raise ConfigError("pool_to must be at least 2 to retain retinotopic structure")
         if self.weights_seed is not None:
-            _integer(self.weights_seed, "weights_seed")
+            _require_integer(self.weights_seed, "weights_seed")
             if self.weights_seed < 0:
                 raise ConfigError("weights_seed must be nonnegative")
 
@@ -166,15 +168,15 @@ class FitConfig(ConfigBase):
     r2_threshold: float = 0.2
 
     def __post_init__(self) -> None:
-        _integer(self.grid_size, "grid_size")
-        _integer(self.max_nfev, "max_nfev")
+        _require_integer(self.grid_size, "grid_size")
+        _require_integer(self.max_nfev, "max_nfev")
         if self.grid_size < 3:
             raise ConfigError("grid_size must be at least 3")
         if not isinstance(self.sigma_bounds, (tuple, list)) or len(self.sigma_bounds) != 2:
             raise ConfigError("sigma_bounds must contain exactly two bounds")
         low, high = self.sigma_bounds
-        _finite(low, "lower sigma bound")
-        _finite(high, "upper sigma bound")
+        _require_finite(low, "lower sigma bound")
+        _require_finite(high, "upper sigma bound")
         if low < 1.0:
             raise ConfigError(
                 "lower sigma bound must be at least 1 pixel; below the pixel pitch a Gaussian "
@@ -184,7 +186,7 @@ class FitConfig(ConfigBase):
             raise ConfigError("sigma_bounds must be increasing")
         if self.max_nfev < 1:
             raise ConfigError("max_nfev must be positive")
-        _finite(self.r2_threshold, "r2_threshold")
+        _require_finite(self.r2_threshold, "r2_threshold")
         if not 0.0 <= self.r2_threshold <= 1.0:
             raise ConfigError("r2_threshold must lie in [0, 1]")
 
@@ -205,7 +207,7 @@ class RunConfig(ConfigBase):
     }
 
     def __post_init__(self) -> None:
-        _integer(self.seed, "seed")
+        _require_integer(self.seed, "seed")
         if self.seed < 0:
             raise ConfigError("seed must be nonnegative")
         for name, section_type in self._SECTIONS.items():

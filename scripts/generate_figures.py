@@ -1,6 +1,6 @@
-"""Regenerate the figures in README.md.
+"""Regenerate project and validation figures in docs/figures/.
 
-Coverage and timing panels use outputs/validation.json; other panels run supplemental
+Coverage and timing panels use results/validation.json; other panels run supplemental
 synthetic diagnostics. A matching configuration digest is required. Run the report's
 --check first to verify recorded numbers; it does not compare figure pixels.
 Needs the ``viz`` extra::
@@ -22,16 +22,19 @@ matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.colors import ListedColormap
+from matplotlib.patches import FancyArrowPatch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from generate_validation_report import (
+    CARRIER_WIDTH,
     CONFIG,
     CV_SEEDS,
     GROUND_TRUTH,
-    OUTPUTS,
     RECOVERY_NOISE,
     RECOVERY_SEED,
+    RESULTS,
     SPLIT_SEED,
     UNCERTAINTY_NOISE,
     UNCERTAINTY_SEED,
@@ -40,17 +43,19 @@ from generate_validation_report import (
     synthesise,
 )
 
+from cortexprobe.config import StimulusConfig
 from cortexprobe.geometry import Grid
-from cortexprobe.prf.fit import MIN_ON_GRID_VOLUME, RESOLUTION_PER_SIGMA, PRFFitter
+from cortexprobe.prf.fit import MIN_ON_GRID_VOLUME, RESOLUTION_PER_SIGMA, PRFFitter, _r_squared
 from cortexprobe.prf.model import GaussianReceptiveField, predict
-from cortexprobe.prf.validation import CrossValidator
+from cortexprobe.prf.validation import CrossValidator, LeaveOneGroupOut
 from cortexprobe.stimuli import build_apertures, frame_similarity
 
-FIGURES = OUTPUTS
+FIGURES = Path(__file__).resolve().parent.parent / "docs" / "figures"
 INK = "#1b1f23"
 ACCENT = "#2f6f9f"
 WARN = "#b4442e"
 GOOD = "#3f7d58"
+EXAMPLE_NOISE = 0.2
 
 plt.rcParams.update(
     {
@@ -72,18 +77,20 @@ plt.rcParams.update(
 
 def worst_cross_group_similarity(apertures, groups) -> float:
     similarity = frame_similarity(apertures)
-    worst = 0.0
+    worst_similarity = 0.0
     for group in np.unique(groups):
-        test = np.flatnonzero(groups == group)
-        train = np.flatnonzero(groups != group)
-        if len(train):
-            worst = max(worst, float(similarity[np.ix_(test, train)].max(axis=1).max()))
-    return worst
+        test_indices = np.flatnonzero(groups == group)
+        train_indices = np.flatnonzero(groups != group)
+        if len(train_indices):
+            worst_similarity = max(
+                worst_similarity, float(similarity[np.ix_(test_indices, train_indices)].max())
+            )
+    return worst_similarity
 
 
 def load_recorded_report() -> dict:
     """Reject absent or stale validation records before drawing figures."""
-    path = OUTPUTS / "validation.json"
+    path = RESULTS / "validation.json"
     try:
         report = json.loads(path.read_text())
     except (OSError, json.JSONDecodeError) as error:
@@ -99,18 +106,294 @@ def pixel_coordinates(grid: Grid, x0: float, y0: float) -> tuple[float, float]:
     return x0 + origin, origin - y0
 
 
+def synthetic_fit_example():
+    """One reproducible noisy response for the pipeline and prediction figures."""
+    grid = Grid(CONFIG.stimulus.resolution)
+    sequence = build_apertures(CONFIG.stimulus, "bar")
+    apertures = sequence.as_float()
+    clean = synthesise(grid, apertures, UNCERTAINTY_TRUTH)
+    response = synthesise(
+        grid, apertures, UNCERTAINTY_TRUTH, noise=EXAMPLE_NOISE, seed=RECOVERY_SEED
+    )
+    fit = PRFFitter(grid, apertures, CONFIG.fit).fit_unit(response)
+    return grid, sequence, apertures, clean, response, fit
+
+
+def figure_pipeline() -> None:
+    """Show the synthetic experiment from stimulus masks to measured outputs."""
+    grid, sequence, apertures, _, response, fit = synthetic_fit_example()
+    groups = np.unique(sequence.group)
+    fig, axes = plt.subplots(1, 5, figsize=(12.5, 3.5))
+    fig.subplots_adjust(left=0.035, right=0.98, top=0.70, bottom=0.28, wspace=0.42)
+    titles = (
+        "Build apertures",
+        "Create response",
+        "Fit a Gaussian",
+        "Hold out groups",
+        "Inspect results",
+    )
+    captions = (
+        f"{sequence.n_frames} retained bar frames\n{grid.resolution} × {grid.resolution} pixels",
+        f"Known field + Gaussian noise\n{EXAMPLE_NOISE:.0%} signal SD; seed {RECOVERY_SEED}",
+        "Search → refine\nCenter, width, gain, baseline",
+        f"Refit {len(groups)} training folds\nScore each test group",
+        "Fit parameters and scores\nTables and diagnostic plots",
+    )
+    for index, (axis, title, caption) in enumerate(zip(axes, titles, captions)):
+        axis.set_title(f"{index + 1}. {title}", fontsize=10, fontweight="bold", pad=14)
+        position = axis.get_position()
+        fig.text((position.x0 + position.x1) / 2, 0.165, caption, ha="center", va="top", fontsize=9)
+        axis.set_xticks([])
+        axis.set_yticks([])
+        for spine in axis.spines.values():
+            spine.set_visible(False)
+
+    axes[0].imshow(apertures[14], cmap="gray_r", interpolation="nearest", aspect="auto")
+    axes[1].plot(response, color=ACCENT, lw=1.3)
+    axes[1].set_xlabel("frame", fontsize=8)
+    known_weights = GaussianReceptiveField(*UNCERTAINTY_TRUTH).weights(grid)
+    fitted_weights = GaussianReceptiveField(fit.x0, fit.y0, fit.sigma).weights(grid)
+    axes[2].imshow(known_weights, cmap="magma", interpolation="nearest", aspect="auto")
+    axes[2].contour(
+        fitted_weights, levels=[fitted_weights.max() * np.exp(-0.5)], colors=GOOD, linewidths=1.5
+    )
+    axes[2].set_xlabel("known field + fitted 1σ contour", fontsize=8)
+
+    axes[3].imshow(np.eye(len(groups)), cmap=ListedColormap(["#deebf7", "#e9b59b"]), aspect="auto")
+    axes[3].set_xticks(
+        np.arange(len(groups)), [f"G{i + 1}" for i in range(len(groups))], fontsize=7
+    )
+    axes[3].set_yticks(
+        np.arange(len(groups)), [f"F{i + 1}" for i in range(len(groups))], fontsize=7
+    )
+    axes[3].set_xlabel("blue: train · orange: test", fontsize=8)
+    axes[4].axis("off")
+    table = axes[4].table(
+        cellText=[
+            ["center (px)", f"{fit.x0:.1f}, {fit.y0:.1f}"],
+            ["width σ (px)", f"{fit.sigma:.2f}"],
+            ["in-sample R²", f"{fit.r2:.3f}"],
+        ],
+        colLabels=["full-data fit", "estimate"],
+        colWidths=[0.62, 0.38],
+        cellLoc="left",
+        loc="center",
+    )
+    table.auto_set_font_size(False)
+    table.set_fontsize(8)
+    table.scale(1.12, 1.7)
+    for (row, _), cell in table.get_celld().items():
+        cell.set_edgecolor("#d0d7de")
+        cell.set_facecolor("#eef3f8" if row == 0 else "white")
+
+    for left, right in zip(axes[:-1], axes[1:]):
+        left_position, right_position = left.get_position(), right.get_position()
+        fig.add_artist(
+            FancyArrowPatch(
+                (left_position.x1 + 0.007, 0.49),
+                (right_position.x0 - 0.007, 0.49),
+                transform=fig.transFigure,
+                arrowstyle="-|>",
+                mutation_scale=13,
+                color="#8c959f",
+                lw=1.2,
+            )
+        )
+    fig.suptitle(
+        "CortexProbe: a synthetic receptive-field experiment",
+        fontsize=14,
+        fontweight="bold",
+        y=0.96,
+    )
+    fig.text(
+        0.5,
+        0.025,
+        "Python · NumPy · SciPy   |   Synthetic inputs only; "
+        "no network runner or human-data validation",
+        ha="center",
+        fontsize=9,
+        color="#59636e",
+    )
+    fig.savefig(FIGURES / "pipeline.png", dpi=180)
+    plt.close(fig)
+
+
+def figure_fitted_response() -> None:
+    """Distinguish a full-data fit from predictions made by separate training folds."""
+    grid, sequence, apertures, clean, response, fit = synthetic_fit_example()
+    groups = np.unique(sequence.group)
+    field = GaussianReceptiveField(fit.x0, fit.y0, fit.sigma)
+    full_prediction = fit.beta * predict(field.weights(grid), apertures) + fit.baseline
+    held_out_prediction = np.full_like(response, np.nan)
+    fold_scores = []
+    for train, test in LeaveOneGroupOut(sequence.group).splits():
+        fold_fit = PRFFitter(grid, apertures[train], CONFIG.fit).fit_unit(response[train])
+        fold_field = GaussianReceptiveField(fold_fit.x0, fold_fit.y0, fold_fit.sigma)
+        held_out_prediction[test] = (
+            fold_fit.beta * predict(fold_field.weights(grid), apertures[test]) + fold_fit.baseline
+        )
+        fold_scores.append(_r_squared(response[test], held_out_prediction[test]))
+    finite_scores = [score for score in fold_scores if np.isfinite(score)]
+    mean_fold_r2 = np.mean(finite_scores) if finite_scores else float("nan")
+    frames = np.arange(len(response))
+    fig, axes = plt.subplots(2, 1, figsize=(10.0, 5.4), sharex=True, height_ratios=[2.5, 1])
+    axes[0].scatter(
+        frames,
+        response,
+        s=14,
+        color="#8c959f",
+        alpha=0.8,
+        label="observed synthetic response",
+        zorder=3,
+    )
+    axes[0].plot(frames, clean, color=INK, ls=":", lw=1.3, label="known clean response")
+    axes[0].plot(
+        frames,
+        full_prediction,
+        color=ACCENT,
+        lw=2,
+        label=f"fit to all frames (in-sample R² = {fit.r2:.3f})",
+    )
+    axes[0].plot(
+        frames,
+        held_out_prediction,
+        color=WARN,
+        ls="--",
+        lw=1.5,
+        label=f"held-out predictions (mean fold R² = {mean_fold_r2:.3f})",
+    )
+    axes[0].set_ylabel("response (arbitrary units)")
+    axes[0].legend(frameon=False, fontsize=8, ncol=2, loc="upper right")
+    axes[0].margins(y=0.25)
+    axes[1].axhline(0, color=INK, lw=0.9)
+    axes[1].plot(frames, response - full_prediction, color=ACCENT, lw=1.2)
+    axes[1].plot(frames, response - held_out_prediction, color=WARN, ls="--", lw=1.2)
+    axes[1].set_ylabel("residual")
+    axes[1].set_xlabel("retained frame")
+    for index, group in enumerate(groups):
+        positions = frames[sequence.group == group]
+        for axis in axes:
+            axis.axvspan(
+                positions.min() - 0.5,
+                positions.max() + 0.5,
+                color=ACCENT,
+                alpha=0.035 if index % 2 == 0 else 0,
+            )
+        axes[1].text(
+            positions.mean(),
+            0.95,
+            f"group {group}",
+            transform=axes[1].get_xaxis_transform(),
+            va="top",
+            ha="center",
+            fontsize=7,
+            color="#59636e",
+        )
+    for axis in axes:
+        axis.grid(axis="y", color="#eef1f4", lw=1)
+        axis.set_axisbelow(True)
+        axis.set_xlim(-0.5, len(response) - 0.5)
+    fig.suptitle(
+        "Response curves: fit to all frames and predict held-out frames",
+        fontsize=12,
+        fontweight="bold",
+    )
+    fig.text(
+        0.5,
+        0.025,
+        f"Known center ({UNCERTAINTY_TRUTH[0]:g}, {UNCERTAINTY_TRUTH[1]:g}) px; "
+        f"σ = {UNCERTAINTY_TRUTH[2]:g} px. "
+        f"Gaussian noise = {EXAMPLE_NOISE:.0%} of clean signal SD; seed {RECOVERY_SEED}.\n"
+        f"Held-out curve: {len(groups)} separately trained models; "
+        "each keeps its parameters fixed on its test group.",
+        ha="center",
+        fontsize=8.5,
+    )
+    fig.tight_layout(rect=(0, 0.11, 1, 0.94))
+    fig.savefig(FIGURES / "fitted-response.png", dpi=170)
+    plt.close(fig)
+
+
+def figure_noise_autocorrelation() -> None:
+    """Describe the existing noise generator with timecourses and lag correlations."""
+    n_frames = build_apertures(CONFIG.stimulus, "bar").n_frames
+    lags = np.arange(13)
+    fig, axes = plt.subplots(1, 2, figsize=(9.6, 3.8))
+    for label, colour in (("white noise", ACCENT), (f"{CARRIER_WIDTH}-frame moving average", WARN)):
+        correlations = []
+        for seed in CV_SEEDS:
+            noise = (
+                np.random.default_rng(seed).normal(size=n_frames)
+                if label == "white noise"
+                else autocorrelated_noise(n_frames, CARRIER_WIDTH, seed)
+            )
+            correlations.append(
+                [1.0] + [float(np.corrcoef(noise[:-lag], noise[lag:])[0, 1]) for lag in lags[1:]]
+            )
+            if seed == CV_SEEDS[0]:
+                standardized = (noise - noise.mean()) / noise.std()
+                axes[0].plot(standardized, color=colour, lw=1.3, label=label)
+        axes[1].plot(
+            lags,
+            np.mean(correlations, axis=0),
+            "o-",
+            color=colour,
+            ms=4,
+            lw=1.7,
+            label=f"{label}: sample mean",
+        )
+    axes[0].set_title(f"One paired realization (seed {CV_SEEDS[0]})")
+    axes[0].set_xlabel("frame")
+    axes[0].set_ylabel("noise (standard deviation units)")
+    axes[0].legend(frameon=False, fontsize=8)
+    axes[1].axhline(0, color=INK, lw=0.9)
+    axes[1].plot(
+        lags,
+        np.maximum(1 - lags / CARRIER_WIDTH, 0),
+        color="#8c959f",
+        ls=":",
+        lw=1.6,
+        label="stationary moving-average reference",
+    )
+    axes[1].set_title(f"Mean sample autocorrelation ({len(CV_SEEDS)} seeds)")
+    axes[1].set_xlabel("lag (frames)")
+    axes[1].set_ylabel("Pearson correlation at each lag")
+    axes[1].set_xticks(lags[::2])
+    axes[1].set_ylim(-0.3, 1.06)
+    axes[1].legend(frameon=False, fontsize=8)
+    for axis in axes:
+        axis.grid(axis="y", color="#eef1f4", lw=1)
+        axis.set_axisbelow(True)
+    fig.suptitle(
+        "Noise inputs used in the grouped-validation experiment", fontsize=11.5, fontweight="bold"
+    )
+    fig.text(
+        0.5,
+        0.025,
+        f"{n_frames} frames per seed; seeds {CV_SEEDS[0]}–{CV_SEEDS[-1]}. "
+        "Lagged correlations are computed per seed, then averaged.\n"
+        f"Moving-average reference: max(1 − lag/{CARRIER_WIDTH}, 0). "
+        "Finite samples can differ. These curves describe inputs, not fit quality.",
+        ha="center",
+        fontsize=8.5,
+    )
+    fig.tight_layout(rect=(0, 0.12, 1, 0.93))
+    fig.savefig(FIGURES / "noise-autocorrelation.png", dpi=170)
+    plt.close(fig)
+
+
 def figure_stimulus() -> None:
-    """One row per design, frames coloured by cross-validation group."""
+    """One row per stimulus design, with cross-validation groups labelled."""
     fig, axes = plt.subplots(3, 6, figsize=(8.4, 4.4))
     for row, kind in enumerate(("bar", "wedge", "ring")):
         sequence = build_apertures(CONFIG.stimulus, kind)
-        picks = np.linspace(0, sequence.n_frames - 1, 6).astype(int)
-        for column, index in enumerate(picks):
+        frame_indices = np.linspace(0, sequence.n_frames - 1, 6).astype(int)
+        for column, frame_index in enumerate(frame_indices):
             axis = axes[row, column]
-            axis.imshow(sequence.apertures[index], cmap="gray_r", interpolation="nearest")
+            axis.imshow(sequence.apertures[frame_index], cmap="gray_r", interpolation="nearest")
             axis.set_xticks([])
             axis.set_yticks([])
-            axis.set_title(f"group {sequence.group[index]}", fontsize=7, pad=2)
+            axis.set_title(f"group {sequence.group[frame_index]}", fontsize=7, pad=2)
             for spine in axis.spines.values():
                 spine.set_visible(False)
         axes[row, 0].set_ylabel(
@@ -129,41 +412,56 @@ def figure_stimulus() -> None:
 
 def figure_fold_leakage() -> None:
     """Worst held-out/training similarity, grouping by direction versus by axis."""
-    grid_config = CONFIG.stimulus
-    default = grid_config.__class__(resolution=64, n_steps=20)
+    stimulus_config = StimulusConfig(resolution=64, n_steps=20)
 
-    labels, before, after = [], [], []
+    labels, before_similarities, after_similarities = [], [], []
 
-    sequence = build_apertures(default, "bar")
-    by_direction = np.array([d for d in default.directions for _ in range(default.n_steps)])
+    sequence = build_apertures(stimulus_config, "bar")
+    direction_groups = sequence.frame_index // max(1000, stimulus_config.n_steps)
     labels.append("bar\n(8 directions)")
-    before.append(worst_cross_group_similarity(sequence.apertures, by_direction))
-    after.append(worst_cross_group_similarity(sequence.apertures, sequence.group))
+    before_similarities.append(worst_cross_group_similarity(sequence.apertures, direction_groups))
+    after_similarities.append(worst_cross_group_similarity(sequence.apertures, sequence.group))
 
     for kind in ("wedge", "ring"):
         unpruned = build_apertures(
-            grid_config.__class__(resolution=64, n_steps=20, max_fold_similarity=0.999), kind
+            StimulusConfig(resolution=64, n_steps=20, max_fold_similarity=0.999), kind
         )
-        pruned = build_apertures(default, kind)
+        pruned = build_apertures(stimulus_config, kind)
         labels.append(kind)
-        before.append(worst_cross_group_similarity(unpruned.apertures, unpruned.group))
-        after.append(worst_cross_group_similarity(pruned.apertures, pruned.group))
+        before_similarities.append(worst_cross_group_similarity(unpruned.apertures, unpruned.group))
+        after_similarities.append(worst_cross_group_similarity(pruned.apertures, pruned.group))
 
-    x = np.arange(len(labels))
+    positions = np.arange(len(labels))
     fig, axis = plt.subplots(figsize=(6.2, 3.2))
-    axis.bar(x - 0.19, before, 0.36, label="before", color=WARN)
-    axis.bar(x + 0.19, after, 0.36, label="after", color=GOOD)
+    axis.bar(positions - 0.19, before_similarities, 0.36, label="before", color=WARN)
+    axis.bar(positions + 0.19, after_similarities, 0.36, label="after", color=GOOD)
     axis.axhline(
-        default.max_fold_similarity,
+        stimulus_config.max_fold_similarity,
         color=INK,
         ls="--",
         lw=1,
-        label=f"threshold {default.max_fold_similarity}",
+        label=f"threshold {stimulus_config.max_fold_similarity}",
     )
-    for index, (b, a) in enumerate(zip(before, after)):
-        axis.text(index - 0.19, b + 0.02, f"{b:.3f}", ha="center", fontsize=8, color=WARN)
-        axis.text(index + 0.19, a + 0.02, f"{a:.3f}", ha="center", fontsize=8, color=GOOD)
-    axis.set_xticks(x)
+    for index, (before_similarity, after_similarity) in enumerate(
+        zip(before_similarities, after_similarities)
+    ):
+        axis.text(
+            index - 0.19,
+            before_similarity + 0.02,
+            f"{before_similarity:.3f}",
+            ha="center",
+            fontsize=8,
+            color=WARN,
+        )
+        axis.text(
+            index + 0.19,
+            after_similarity + 0.02,
+            f"{after_similarity:.3f}",
+            ha="center",
+            fontsize=8,
+            color=GOOD,
+        )
+    axis.set_xticks(positions)
     axis.set_xticklabels(labels)
     axis.set_ylim(0, 1.15)
     axis.set_ylabel("worst held-out ↔ training\ncosine similarity")
@@ -180,58 +478,61 @@ def figure_recovery() -> None:
     apertures = build_apertures(CONFIG.stimulus, "bar").as_float()
     fitter = PRFFitter(grid, apertures, CONFIG.fit)
 
-    position = np.zeros((len(GROUND_TRUTH), len(RECOVERY_NOISE)))
-    size = np.zeros_like(position)
-    for row, truth in enumerate(GROUND_TRUTH):
-        for column, noise in enumerate(RECOVERY_NOISE):
+    position_errors = np.zeros((len(GROUND_TRUTH), len(RECOVERY_NOISE)))
+    sigma_errors = np.zeros_like(position_errors)
+    for field_index, truth in enumerate(GROUND_TRUTH):
+        for noise_index, noise in enumerate(RECOVERY_NOISE):
             fit = fitter.fit_unit(
                 synthesise(grid, apertures, truth, noise=noise, seed=RECOVERY_SEED)
             )
-            position[row, column] = float(np.hypot(fit.x0 - truth[0], fit.y0 - truth[1]))
-            size[row, column] = abs(fit.sigma - truth[2]) / truth[2] * 100.0
+            position_errors[field_index, noise_index] = float(
+                np.hypot(fit.x0 - truth[0], fit.y0 - truth[1])
+            )
+            sigma_errors[field_index, noise_index] = abs(fit.sigma - truth[2]) / truth[2] * 100.0
 
-    noise_pct = [n * 100 for n in RECOVERY_NOISE]
+    noise_percentages = [noise * 100 for noise in RECOVERY_NOISE]
     fig, axes = plt.subplots(1, 2, figsize=(8.0, 3.4))
-    for axis, data, label, places in (
-        (axes[0], position, "position error (px)", 3),
-        (axes[1], size, "sigma error (%)", 1),
+    for axis, errors, error_label, decimal_places in (
+        (axes[0], position_errors, "position error (px)", 3),
+        (axes[1], sigma_errors, "sigma error (%)", 1),
     ):
-        for row in range(len(GROUND_TRUTH)):
+        largest_errors = errors.max(axis=0)
+        for field_index in range(len(GROUND_TRUTH)):
             axis.plot(
-                noise_pct,
-                data[row],
+                noise_percentages,
+                errors[field_index],
                 marker="o",
                 ms=3.5,
                 lw=1,
                 color="#c3cad1",
                 zorder=1,
-                label="individual pRF" if row == 0 else None,
+                label="individual pRF" if field_index == 0 else None,
             )
         axis.plot(
-            noise_pct,
-            data.max(axis=0),
+            noise_percentages,
+            largest_errors,
             marker="o",
             ms=6,
             lw=2.2,
             color=WARN,
             zorder=3,
-            label="largest of 5",
+            label=f"largest of {len(GROUND_TRUTH)}",
         )
         axis.plot(
-            noise_pct,
-            data.mean(axis=0),
+            noise_percentages,
+            errors.mean(axis=0),
             marker="o",
             ms=6,
             lw=2.2,
             color=ACCENT,
             zorder=3,
-            label="mean of 5",
+            label=f"mean of {len(GROUND_TRUTH)}",
         )
-        for column, value in enumerate(data.max(axis=0)):
-            shown = 0.0 if value < 1e-6 else value
+        for noise_index, error_value in enumerate(largest_errors):
+            displayed_error = 0.0 if error_value < 1e-6 else error_value
             axis.annotate(
-                f"{shown:.{places}f}",
-                (noise_pct[column], value),
+                f"{displayed_error:.{decimal_places}f}",
+                (noise_percentages[noise_index], error_value),
                 textcoords="offset points",
                 xytext=(0, 9),
                 ha="center",
@@ -240,55 +541,57 @@ def figure_recovery() -> None:
                 fontweight="bold",
             )
         axis.set_xlabel("noise (% of signal standard deviation)")
-        axis.set_ylabel(label)
-        axis.set_xticks(noise_pct)
-        axis.set_xticklabels([f"{int(n)}" for n in noise_pct])
+        axis.set_ylabel(error_label)
+        axis.set_xticks(noise_percentages)
+        axis.set_xticklabels([f"{int(noise)}" for noise in noise_percentages])
         axis.margins(y=0.28)
-        axis.set_ylim(bottom=-data.max() * 0.06)
+        axis.set_ylim(bottom=-errors.max() * 0.06)
         axis.grid(axis="y", color="#eef1f4", lw=1)
         axis.set_axisbelow(True)
     axes[0].legend(frameon=False, fontsize=8, loc="upper left")
-    fig.suptitle("Recovery error: 5 synthetic fields", fontsize=11, fontweight="bold")
+    fig.suptitle(
+        f"Recovery error: {len(GROUND_TRUTH)} synthetic fields", fontsize=11, fontweight="bold"
+    )
     fig.tight_layout(rect=(0, 0, 1, 0.92))
     fig.savefig(FIGURES / "recovery.png", dpi=150)
     plt.close(fig)
 
 
 def figure_leakage() -> None:
-    """Grouped and random-frame held-out scores over 20 seeds."""
+    """Grouped and random-frame held-out scores for the validation seeds."""
     grid = Grid(CONFIG.stimulus.resolution)
     sequence = build_apertures(CONFIG.stimulus, "bar")
     apertures = sequence.as_float()
     grouped = CrossValidator(grid, apertures, sequence.group, CONFIG.fit)
-    shuffled = np.random.default_rng(SPLIT_SEED).permutation(len(apertures)) % 4
-    leaky = CrossValidator(grid, apertures, shuffled, CONFIG.fit)
+    random_groups = np.random.default_rng(SPLIT_SEED).permutation(len(apertures)) % 4
+    random_split = CrossValidator(grid, apertures, random_groups, CONFIG.fit)
 
     fig, axes = plt.subplots(1, 2, figsize=(7.6, 3.2), sharey=True)
     for axis, label in zip(axes, ("white", "autocorrelated")):
-        honest, split = [], []
+        grouped_scores, random_scores = [], []
         for seed in CV_SEEDS:
             if label == "white":
                 response = np.random.default_rng(seed).normal(size=len(apertures))
             else:
-                response = autocorrelated_noise(len(apertures), 3, seed)
-            honest.append(grouped.validate_unit(response).cv_r2)
-            split.append(leaky.validate_unit(response).cv_r2)
+                response = autocorrelated_noise(len(apertures), CARRIER_WIDTH, seed)
+            grouped_scores.append(grouped.validate_unit(response).cv_r2)
+            random_scores.append(random_split.validate_unit(response).cv_r2)
 
-        for h, s in zip(honest, split):
-            axis.plot([0, 1], [h, s], color="#8c959f", lw=0.7, zorder=1)
-        axis.scatter(np.zeros(len(honest)), honest, s=22, color=GOOD, zorder=2, label="grouped")
-        axis.scatter(np.ones(len(split)), split, s=22, color=WARN, zorder=2, label="random split")
+        for grouped_score, random_score in zip(grouped_scores, random_scores):
+            axis.plot([0, 1], [grouped_score, random_score], color="#8c959f", lw=0.7, zorder=1)
+        axis.scatter(np.zeros(len(CV_SEEDS)), grouped_scores, s=22, color=GOOD, zorder=2)
+        axis.scatter(np.ones(len(CV_SEEDS)), random_scores, s=22, color=WARN, zorder=2)
         axis.axhline(0, color=INK, lw=1)
         axis.set_xticks([0, 1])
         axis.set_xticklabels(["grouped\n(axis)", "random\nframe split"])
         axis.set_xlim(-0.35, 1.35)
-        leak = np.mean(np.asarray(split) - np.asarray(honest))
+        differences = np.asarray(random_scores) - np.asarray(grouped_scores)
         axis.set_title(
-            f"{label} noise\nmean leak {leak:+.3f}, "
-            f"{int((np.asarray(split) > np.asarray(honest)).sum())}/{len(CV_SEEDS)} positive"
+            f"{label} noise\nmean difference {differences.mean():+.3f}, "
+            f"{int((differences > 0).sum())}/{len(CV_SEEDS)} positive"
         )
     axes[0].set_ylabel("held-out R²")
-    fig.suptitle("Grouped and random-split validation: 20 noise seeds", fontsize=10)
+    fig.suptitle(f"Grouped and random-split validation: {len(CV_SEEDS)} noise seeds", fontsize=10)
     fig.tight_layout(rect=(0, 0, 1, 0.92))
     fig.savefig(FIGURES / "leakage.png", dpi=150)
     plt.close(fig)
@@ -304,7 +607,7 @@ def figure_model() -> None:
     response = predict(weights, apertures)
 
     fig = plt.figure(figsize=(9.2, 3.6))
-    spec = fig.add_gridspec(
+    layout = fig.add_gridspec(
         1,
         4,
         width_ratios=[1, 1, 1, 2.6],
@@ -315,7 +618,7 @@ def figure_model() -> None:
         bottom=0.17,
     )
 
-    axis = fig.add_subplot(spec[0, 0])
+    axis = fig.add_subplot(layout[0, 0])
     axis.imshow(weights, cmap="magma", interpolation="nearest")
     axis.set_title("pRF $w(x,y)$", fontsize=9)
     axis.set_xlabel(r"$x_0{=}12,\ y_0{=}8,\ \sigma{=}5$", fontsize=8)
@@ -323,7 +626,7 @@ def figure_model() -> None:
     axis.set_yticks([])
 
     for column, frame in ((1, 8), (2, 14)):
-        axis = fig.add_subplot(spec[0, column])
+        axis = fig.add_subplot(layout[0, column])
         axis.imshow(apertures[frame], cmap="gray_r", interpolation="nearest")
         axis.contour(weights, levels=3, colors=WARN, linewidths=0.9)
         axis.set_title(f"aperture $a_{{t}}$, $t{{=}}{frame}$", fontsize=9)
@@ -331,22 +634,20 @@ def figure_model() -> None:
         axis.set_xticks([])
         axis.set_yticks([])
 
-    axis = fig.add_subplot(spec[0, 3])
+    axis = fig.add_subplot(layout[0, 3])
     axis.plot(response, color=ACCENT, lw=1.5)
     for frame in (8, 14):
         axis.axvline(frame, color="#8c959f", ls="--", lw=1)
         axis.plot([frame], [response[frame]], "o", ms=7, color=WARN, zorder=3)
-    axis.annotate(
-        "t=8", (8, response[8]), textcoords="offset points", xytext=(6, 10), fontsize=8, color=WARN
-    )
-    axis.annotate(
-        "t=14",
-        (14, response[14]),
-        textcoords="offset points",
-        xytext=(6, -4),
-        fontsize=8,
-        color=WARN,
-    )
+    for frame, vertical_offset in ((8, 10), (14, -4)):
+        axis.annotate(
+            f"t={frame}",
+            (frame, response[frame]),
+            textcoords="offset points",
+            xytext=(6, vertical_offset),
+            fontsize=8,
+            color=WARN,
+        )
     axis.set_xlabel("frame")
     axis.set_ylabel("predicted response")
     axis.set_title("timecourse, one peak per sweep", fontsize=9)
@@ -369,14 +670,14 @@ def figure_sigma_guard() -> None:
 
     grid = Grid(CONFIG.stimulus.resolution)
     sigmas = np.linspace(0.1, 30.0, 220)
-    volume = [
-        float(GaussianReceptiveField(0.0, 0.0, float(s)).weights(grid)[grid.field_mask].sum())
-        for s in sigmas
+    retained_mass = [
+        float(GaussianReceptiveField(0.0, 0.0, float(sigma)).weights(grid)[grid.field_mask].sum())
+        for sigma in sigmas
     ]
     ceiling = grid.resolution / RESOLUTION_PER_SIGMA
     axes[0].axvspan(0, 1.0, color=WARN, alpha=0.10)
     axes[0].axvspan(ceiling, 30, color=WARN, alpha=0.10)
-    axes[0].plot(sigmas, volume, color=ACCENT, lw=2.2, zorder=3)
+    axes[0].plot(sigmas, retained_mass, color=ACCENT, lw=2.2, zorder=3)
     axes[0].axhline(MIN_ON_GRID_VOLUME, color=INK, ls="--", lw=1, zorder=2)
     axes[0].annotate(
         f"tolerance {MIN_ON_GRID_VOLUME}",
@@ -413,11 +714,14 @@ def figure_sigma_guard() -> None:
     axes[0].set_title("Centered Gaussian on a finite field")
 
     offsets = np.linspace(0.0, 0.5, 60)
-    sums = [float(GaussianReceptiveField(float(o), 0.0, 0.2).weights(grid).sum()) for o in offsets]
+    sampled_mass = [
+        float(GaussianReceptiveField(float(offset), 0.0, 0.2).weights(grid).sum())
+        for offset in offsets
+    ]
     on_pixel = float(GaussianReceptiveField(0.5, -0.5, 0.2).weights(grid).sum())
     axes[1].axhline(1.0, color=GOOD, ls="--", lw=1.2, zorder=2)
     axes[1].annotate("unit volume = 1.0", (0.02, 1.0), va="bottom", fontsize=8, color=GOOD)
-    axes[1].plot(offsets, sums, color=ACCENT, lw=2.2, zorder=3)
+    axes[1].plot(offsets, sampled_mass, color=ACCENT, lw=2.2, zorder=3)
     axes[1].scatter([0.5], [on_pixel], s=60, color=WARN, zorder=4)
     axes[1].annotate(
         f"on a pixel centre\n{on_pixel:.2f}",
@@ -430,13 +734,13 @@ def figure_sigma_guard() -> None:
         textcoords="data",
     )
     axes[1].annotate(
-        f"between pixels\n{sums[0]:.3f}",
-        (0.0, sums[0]),
+        f"between pixels\n{sampled_mass[0]:.3f}",
+        (0.0, sampled_mass[0]),
         ha="left",
         va="bottom",
         fontsize=8,
         color=ACCENT,
-        xytext=(0.03, sums[0] * 1.4),
+        xytext=(0.03, sampled_mass[0] * 1.4),
         textcoords="data",
         arrowprops={"arrowstyle": "->", "color": ACCENT, "lw": 0.9},
     )
@@ -456,32 +760,47 @@ def figure_sigma_guard() -> None:
 
 
 def figure_uncertainty() -> None:
-    """Standard errors grow with noise, and the intervals are checked for coverage."""
+    """Plot x0 standard errors, interval widths, and measured interval coverage."""
     grid = Grid(CONFIG.stimulus.resolution)
     apertures = build_apertures(CONFIG.stimulus, "bar").as_float()
     fitter = PRFFitter(grid, apertures, CONFIG.fit)
 
-    noises, errors, widths = [], [], []
+    standard_errors, interval_widths = [], []
     for noise in UNCERTAINTY_NOISE:
         fit = fitter.fit_unit(
             synthesise(grid, apertures, UNCERTAINTY_TRUTH, noise=noise, seed=UNCERTAINTY_SEED)
         )
-        low, high = fit.confidence_interval("x0")
-        noises.append(noise)
-        errors.append(fit.se_x0)
-        widths.append(high - low)
+        lower, upper = fit.confidence_interval("x0")
+        standard_errors.append(fit.se_x0)
+        interval_widths.append(upper - lower)
 
     report = load_recorded_report()
     coverage = report["uncertainty"]["coverage"]
 
     fig, axes = plt.subplots(1, 2, figsize=(8.8, 3.4))
 
-    axes[0].plot(noises, errors, marker="o", ms=6, lw=2.2, color=ACCENT, label=r"SE of $x_0$")
-    axes[0].plot(noises, widths, marker="s", ms=6, lw=2.2, color=WARN, label="95 % CI width")
-    for x, y in zip(noises, widths):
+    axes[0].plot(
+        UNCERTAINTY_NOISE,
+        standard_errors,
+        marker="o",
+        ms=6,
+        lw=2.2,
+        color=ACCENT,
+        label=r"SE of $x_0$",
+    )
+    axes[0].plot(
+        UNCERTAINTY_NOISE,
+        interval_widths,
+        marker="s",
+        ms=6,
+        lw=2.2,
+        color=WARN,
+        label="95 % CI width",
+    )
+    for noise, interval_width in zip(UNCERTAINTY_NOISE, interval_widths):
         axes[0].annotate(
-            f"{y:.3f}",
-            (x, y),
+            f"{interval_width:.3f}",
+            (noise, interval_width),
             textcoords="offset points",
             xytext=(0, 8),
             ha="center",
@@ -490,43 +809,49 @@ def figure_uncertainty() -> None:
         )
     axes[0].set_xlabel("noise (fraction of signal SD)")
     axes[0].set_ylabel("pixels")
-    axes[0].set_title("Uncertainty tracks the noise")
+    axes[0].set_title("Standard error and interval width")
     axes[0].legend(frameon=False, fontsize=8, loc="upper left")
     axes[0].margins(y=0.24)
 
-    labels = [f"{r['position']}\n{r['noise']:.0%} noise" for r in coverage]
-    values = [r["coverage"] for r in coverage]
-    lows = [r["ci_low"] for r in coverage]
-    highs = [r["ci_high"] for r in coverage]
-    x = np.arange(len(labels))
-    axes[1].axhline(0.95, color=INK, ls="--", lw=1)
+    labels = [f"{row['position']}\n{row['noise']:.0%} noise" for row in coverage]
+    coverage_rates = np.array([row["coverage"] for row in coverage])
+    lower_bounds = np.array([row["ci_low"] for row in coverage])
+    upper_bounds = np.array([row["ci_high"] for row in coverage])
+    positions = np.arange(len(labels))
+    nominal = report["uncertainty"]["nominal"]
+    axes[1].axhline(nominal, color=INK, ls="--", lw=1)
     axes[1].annotate(
-        "nominal 0.95", (len(labels) - 0.5, 0.951), ha="right", va="bottom", fontsize=8, color=INK
+        f"nominal {nominal:.2f}",
+        (len(labels) - 0.5, nominal + 0.001),
+        ha="right",
+        va="bottom",
+        fontsize=8,
+        color=INK,
     )
     axes[1].errorbar(
-        x,
-        values,
-        yerr=[np.array(values) - np.array(lows), np.array(highs) - np.array(values)],
+        positions,
+        coverage_rates,
+        yerr=[coverage_rates - lower_bounds, upper_bounds - coverage_rates],
         fmt="o",
         ms=7,
         lw=1.6,
         capsize=5,
         color=ACCENT,
     )
-    for xi, v in zip(x, values):
+    for position, coverage_rate in zip(positions, coverage_rates):
         axes[1].annotate(
-            f"{v:.3f}",
-            (xi, v),
+            f"{coverage_rate:.3f}",
+            (position, coverage_rate),
             textcoords="offset points",
             xytext=(9, -3),
             fontsize=8,
             color=ACCENT,
         )
-    axes[1].set_xticks(x)
+    axes[1].set_xticks(positions)
     axes[1].set_xticklabels(labels, fontsize=8)
     axes[1].set_ylim(0.86, 1.0)
     axes[1].set_ylabel("empirical coverage")
-    axes[1].set_title(f"Coverage of the 95 % interval (n = {coverage[0]['n']} each)")
+    axes[1].set_title(f"Coverage of the 95 % x0 interval (n = {coverage[0]['n']} each)")
 
     for axis in axes:
         axis.grid(axis="y", color="#eef1f4", lw=1)
@@ -542,68 +867,75 @@ def figure_uncertainty() -> None:
 
 
 def figure_misspecification() -> None:
-    """A single Gaussian cannot represent two lobes, and the diagnostic says so."""
+    """Compare residual second-field gain for single- and two-lobe responses."""
     grid = Grid(CONFIG.stimulus.resolution)
     apertures = build_apertures(CONFIG.stimulus, "bar").as_float()
     fitter = PRFFitter(grid, apertures, CONFIG.fit)
 
-    def response(weights, noise, seed):
+    def noisy_response(weights, noise, seed):
         clean = 3.0 * predict(weights, apertures) + 0.5
         if noise <= 0:
             return clean
         rng = np.random.default_rng(seed)
         return clean + rng.normal(0.0, noise * float(clean.std()), size=clean.shape)
 
-    lobes_near = GaussianReceptiveField(14.0, 0.0, 3.0).weights(grid) + GaussianReceptiveField(
+    near_lobes = GaussianReceptiveField(14.0, 0.0, 3.0).weights(grid) + GaussianReceptiveField(
         -14.0, 0.0, 3.0
     ).weights(grid)
-    lobes_far = GaussianReceptiveField(16.0, 10.0, 3.0).weights(grid) + GaussianReceptiveField(
+    far_lobes = GaussianReceptiveField(16.0, 10.0, 3.0).weights(grid) + GaussianReceptiveField(
         -16.0, -10.0, 3.0
     ).weights(grid)
-    single = GaussianReceptiveField(12.0, 8.0, 5.0).weights(grid)
+    single_field = GaussianReceptiveField(12.0, 8.0, 5.0).weights(grid)
 
-    noises = [0.0, 0.2, 0.5, 0.8]
-    series = {
-        "two lobes, far apart": [
-            fitter.fit_unit(response(lobes_far, n, 7)).second_field_r2 for n in noises
-        ],
-        "two lobes, close": [
-            fitter.fit_unit(response(lobes_near, n, 7)).second_field_r2 for n in noises
-        ],
-        "single Gaussian": [
-            fitter.fit_unit(response(single, n, 7)).second_field_r2 for n in noises
-        ],
+    noise_levels = [0.0, 0.2, 0.5, 0.8]
+    weights_by_label = {
+        "two lobes, far apart": far_lobes,
+        "two lobes, close": near_lobes,
+        "single Gaussian": single_field,
     }
-    pure = fitter.fit_unit(np.random.default_rng(11).normal(size=fitter.n_frames)).second_field_r2
+    fits_by_label = {
+        label: [fitter.fit_unit(noisy_response(weights, noise, 7)) for noise in noise_levels]
+        for label, weights in weights_by_label.items()
+    }
+    pure_noise_gain = fitter.fit_unit(
+        np.random.default_rng(11).normal(size=fitter.n_frames)
+    ).second_field_r2
 
     fig, axes = plt.subplots(1, 2, figsize=(8.8, 3.4))
 
-    axes[0].imshow(lobes_near, cmap="magma", interpolation="nearest")
-    fit = fitter.fit_unit(response(lobes_near, 0.0, 7))
+    axes[0].imshow(near_lobes, cmap="magma", interpolation="nearest")
+    fit = fits_by_label["two lobes, close"][0]
     circle = plt.Circle(
         pixel_coordinates(grid, fit.x0, fit.y0), fit.sigma, fill=False, color=GOOD, lw=2
     )
     axes[0].add_patch(circle)
     axes[0].set_xticks([])
     axes[0].set_yticks([])
-    axes[0].set_title(f"two lobes, one fitted pRF\n$R^2$ = {fit.r2:.4f}, accepted", fontsize=9)
+    status = "accepted" if fit.accepted else "rejected"
+    axes[0].set_title(f"two lobes, one fitted pRF\n$R^2$ = {fit.r2:.4f}, {status}", fontsize=9)
     axes[0].set_xlabel(f"fitted $\\sigma$ = {fit.sigma:.2f} px", fontsize=8)
 
-    for (label, values), colour, marker in zip(
-        series.items(), (WARN, "#d98a3a", ACCENT), ("o", "s", "^")
+    noise_percentages = [noise * 100 for noise in noise_levels]
+    for (label, fits), colour, marker in zip(
+        fits_by_label.items(), (WARN, "#d98a3a", ACCENT), ("o", "s", "^")
     ):
         axes[1].plot(
-            [n * 100 for n in noises],
-            values,
+            noise_percentages,
+            [fit.second_field_r2 for fit in fits],
             marker=marker,
             ms=6,
             lw=2.2,
             color=colour,
             label=label,
         )
-    axes[1].axhline(pure, color=INK, ls="--", lw=1)
+    axes[1].axhline(pure_noise_gain, color=INK, ls="--", lw=1)
     axes[1].annotate(
-        f"pure noise {pure:.3f}", (80, pure), ha="right", va="bottom", fontsize=8, color=INK
+        f"pure noise {pure_noise_gain:.3f}",
+        (80, pure_noise_gain),
+        ha="right",
+        va="bottom",
+        fontsize=8,
+        color=INK,
     )
     axes[1].set_xlabel("noise (% of signal SD)")
     axes[1].set_ylabel("second-field $R^2$ gain")
@@ -627,17 +959,17 @@ def figure_runtime() -> None:
     """Recorded hardware timings for fit and cross-validation."""
     report = load_recorded_report()
     rows = report["runtime"]["rows"]
-    units = [r["units"] for r in rows]
-    per_unit = [r["per_unit_ms"] for r in rows]
-    factor = [r["cv_factor"] for r in rows]
+    unit_counts = [row["units"] for row in rows]
+    per_unit_ms = [row["per_unit_ms"] for row in rows]
+    cv_factors = [row["cv_factor"] for row in rows]
 
     fig, axes = plt.subplots(1, 2, figsize=(8.8, 3.4))
 
-    axes[0].plot(units, per_unit, marker="o", ms=7, lw=2.2, color=ACCENT)
-    for u, v in zip(units, per_unit):
+    axes[0].plot(unit_counts, per_unit_ms, marker="o", ms=7, lw=2.2, color=ACCENT)
+    for unit_count, timing_ms in zip(unit_counts, per_unit_ms):
         axes[0].annotate(
-            f"{v:.1f}",
-            (u, v),
+            f"{timing_ms:.1f}",
+            (unit_count, timing_ms),
             textcoords="offset points",
             xytext=(0, 9),
             ha="center",
@@ -645,18 +977,18 @@ def figure_runtime() -> None:
             color=ACCENT,
         )
     axes[0].set_xscale("log")
-    axes[0].set_xticks(units)
-    axes[0].set_xticklabels([str(u) for u in units])
-    axes[0].set_ylim(0, max(per_unit) * 1.5)
+    axes[0].set_xticks(unit_counts)
+    axes[0].set_xticklabels([str(unit_count) for unit_count in unit_counts])
+    axes[0].set_ylim(0, max(per_unit_ms) * 1.5)
     axes[0].set_xlabel("units fitted")
     axes[0].set_ylabel("per unit (ms)")
     axes[0].set_title("Measured time per unit")
 
-    axes[1].bar([str(u) for u in units], factor, color=GOOD, width=0.55)
-    for i, v in enumerate(factor):
+    axes[1].bar([str(unit_count) for unit_count in unit_counts], cv_factors, color=GOOD, width=0.55)
+    for index, cv_factor in enumerate(cv_factors):
         axes[1].annotate(
-            f"{v:.1f}×",
-            (i, v),
+            f"{cv_factor:.1f}×",
+            (index, cv_factor),
             textcoords="offset points",
             xytext=(0, 5),
             ha="center",
@@ -665,7 +997,7 @@ def figure_runtime() -> None:
         )
     axes[1].set_xlabel("units fitted")
     axes[1].set_ylabel("CV cost ÷ fit cost")
-    axes[1].set_ylim(0, max(factor) * 1.35)
+    axes[1].set_ylim(0, max(cv_factors) * 1.35)
     axes[1].set_title("Cross-validation overhead")
 
     for axis in axes:
@@ -678,7 +1010,7 @@ def figure_runtime() -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Regenerate nine validation figures in outputs/.")
+    parser = argparse.ArgumentParser(description="Regenerate 12 figures in docs/figures/.")
     parser.parse_args(argv)
     try:
         load_recorded_report()
@@ -687,6 +1019,9 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     FIGURES.mkdir(parents=True, exist_ok=True)
     for draw in (
+        figure_pipeline,
+        figure_fitted_response,
+        figure_noise_autocorrelation,
         figure_stimulus,
         figure_fold_leakage,
         figure_recovery,

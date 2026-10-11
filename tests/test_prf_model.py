@@ -6,6 +6,7 @@ import numpy as np
 import pytest
 
 from cortexprobe.geometry import Grid
+from cortexprobe.prf.fit import _r_squared, _solve_amplitude
 from cortexprobe.prf.model import GaussianReceptiveField, design_matrix, predict
 
 
@@ -116,7 +117,7 @@ def test_a_field_far_outside_the_grid_contributes_nothing() -> None:
 
 
 def test_prediction_is_linear_in_the_receptive_field() -> None:
-    """The invariant the spec states: `predict` is linear in the field, not just the aperture."""
+    """Weighted fields produce the same weighted sum of predictions."""
     grid = Grid(32)
     apertures = np.random.default_rng(2).random((8, *grid.shape))
     first = GaussianReceptiveField(3.0, 3.0, 2.0).weights(grid)
@@ -129,12 +130,7 @@ def test_prediction_is_linear_in_the_receptive_field() -> None:
 
 
 def test_translating_field_and_aperture_together_leaves_the_response_unchanged() -> None:
-    """Translation equivariance: the response depends on relative position, not absolute.
-
-    A pRF one pixel to the right, seen through apertures rolled one pixel to the right, must
-    predict exactly what the original pair predicted. If it did not, a fitted position would
-    depend on where in the field the stimulus happened to sit.
-    """
+    """Joint translation preserves overlap when edge weights are negligible."""
     grid = Grid(64)
     apertures = np.random.default_rng(0).random((8, *grid.shape))
     here = GaussianReceptiveField(4.0, -2.0, 3.0).weights(grid)
@@ -163,8 +159,6 @@ def test_unrepresentable_gaussian_variance_is_rejected(sigma) -> None:
 
 @pytest.mark.parametrize("sigma", [2.0, 5.0, 8.0])
 def test_free_amplitude_absorbs_unit_peak_normalization(grid, apertures, sigma) -> None:
-    from cortexprobe.prf.fit import _r_squared, _solve_amplitude
-
     response = 3 * predict(GaussianReceptiveField(12, 8, 5).weights(grid), apertures) + 0.5
     volume = predict(GaussianReceptiveField(12, 8, sigma).weights(grid), apertures)
     scale = 2 * np.pi * sigma**2

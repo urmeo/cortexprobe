@@ -27,7 +27,7 @@ class Grid:
 
     @property
     def radius(self) -> float:
-        """Largest eccentricity that fits inside the square field."""
+        """Radius of the circular field inscribed in the square grid."""
         return self.resolution / 2.0
 
     @cached_property

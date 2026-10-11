@@ -34,10 +34,10 @@ def report_script():
 
 @pytest.fixture
 def record():
-    return json.loads((ROOT / "outputs" / "validation.json").read_text())
+    return json.loads((ROOT / "results" / "validation.json").read_text())
 
 
-def marked_readme(script, record):
+def marked_document(script, record):
     empty = "\n".join(
         f"<!-- BEGIN GENERATED: {name} -->\n<!-- END GENERATED: {name} -->"
         for name in ("recovery", "uncertainty", "cross_validation", "runtime")
@@ -46,19 +46,21 @@ def marked_readme(script, record):
 
 
 def prepare_run(script, record, monkeypatch, tmp_path):
-    outputs = tmp_path / "outputs"
-    outputs.mkdir()
-    (outputs / "validation.json").write_text(json.dumps(record))
-    (tmp_path / "README.md").write_text(marked_readme(script, record))
+    results = tmp_path / "results"
+    results.mkdir()
+    (results / "validation.json").write_text(json.dumps(record))
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "validation.md").write_text(marked_document(script, record))
     monkeypatch.setattr(script, "ROOT", tmp_path)
-    monkeypatch.setattr(script, "OUTPUTS", outputs)
+    monkeypatch.setattr(script, "RESULTS", results)
     for section in ("recovery", "uncertainty", "cross_validation"):
         monkeypatch.setattr(
             script, f"measure_{section}", lambda *args, name=section: copy.deepcopy(record[name])
         )
     environment = {key: f"current-{key}" for key in record["environment"]}
     monkeypatch.setattr(script, "current_environment", lambda: environment)
-    return outputs / "validation.json", environment
+    return results / "validation.json", environment
 
 
 def test_report_loads_actual_json_configuration(monkeypatch):
@@ -92,22 +94,35 @@ def test_generated_blocks_use_recorded_counts_and_paired_coverage(report_script,
 
 
 def test_check_accepts_tolerated_measurements_but_rejects_drift(report_script, record, capsys):
-    readme = marked_readme(report_script, record)
+    document = marked_document(report_script, record)
     fresh = copy.deepcopy(record)
     fresh["recovery"]["rows"][1]["position_mean"] += 0.000001
-    assert report_script.run_check(fresh, record, readme) == 0
+    assert report_script.run_check(fresh, record, document) == 0
     assert "within tolerance" in capsys.readouterr().out
     fresh["recovery"]["rows"][1]["position_mean"] += 0.01
-    assert report_script.run_check(fresh, record, readme) == 1
+    assert report_script.run_check(fresh, record, document) == 1
     assert "recovery.rows.1.position_mean" in capsys.readouterr().out
 
 
-def test_check_rejects_a_manually_edited_readme_table(report_script, record, capsys):
-    readme = marked_readme(report_script, record)
-    changed = readme.replace("| 0.2 |", "| 0.3 |", 1)
-    assert changed != readme
+def test_check_rejects_a_manually_edited_validation_table(report_script, record, capsys):
+    document = marked_document(report_script, record)
+    changed = document.replace("| 0.2 |", "| 0.3 |", 1)
+    assert changed != document
     assert report_script.run_check(record, record, changed) == 1
     assert "tables do not match" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("replacement", [None, "invalid", [], {}, 10**400])
+@pytest.mark.parametrize("changed_report", ["fresh", "recorded"])
+def test_check_reports_invalid_measurement_drift(
+    report_script, record, capsys, replacement, changed_report
+):
+    document = marked_document(report_script, record)
+    fresh = copy.deepcopy(record)
+    changed = fresh if changed_report == "fresh" else record
+    changed["recovery"]["rows"][1]["position_mean"] = replacement
+    assert report_script.run_check(fresh, record, document) == 1
+    assert "recovery.rows.1.position_mean" in capsys.readouterr().out
 
 
 def test_check_ignores_separately_recorded_hardware_provenance(report_script, record):
@@ -118,7 +133,7 @@ def test_check_ignores_separately_recorded_hardware_provenance(report_script, re
         runtime_generated="2026-10-06",
         runtime_config_digest="other-config",
     )
-    assert report_script.run_check(fresh, record, marked_readme(report_script, record)) == 0
+    assert report_script.run_check(fresh, record, marked_document(report_script, record)) == 0
 
 
 def test_report_rejects_conflicting_check_and_runtime_flags(report_script, capsys):
@@ -191,7 +206,7 @@ def figures_script():
 def test_figures_reject_missing_malformed_or_stale_records(
     figures_script, monkeypatch, tmp_path, contents, capsys
 ):
-    monkeypatch.setattr(figures_script, "OUTPUTS", tmp_path)
+    monkeypatch.setattr(figures_script, "RESULTS", tmp_path)
     figures_path = tmp_path / "not-created"
     monkeypatch.setattr(figures_script, "FIGURES", figures_path)
     if contents is not None:
@@ -204,11 +219,11 @@ def test_figures_reject_missing_malformed_or_stale_records(
 def test_figures_help_and_invalid_flags_do_not_generate_files(
     figures_script, monkeypatch, tmp_path, capsys
 ):
-    monkeypatch.setattr(figures_script, "OUTPUTS", tmp_path)
+    monkeypatch.setattr(figures_script, "RESULTS", tmp_path)
     with pytest.raises(SystemExit) as help_result:
         figures_script.main(["--help"])
     assert help_result.value.code == 0
-    assert "nine validation figures" in capsys.readouterr().out
+    assert "12 figures" in capsys.readouterr().out
     with pytest.raises(SystemExit) as invalid_result:
         figures_script.main(["--unknown"])
     assert invalid_result.value.code == 2
@@ -217,7 +232,7 @@ def test_figures_help_and_invalid_flags_do_not_generate_files(
 
 
 def test_figures_accept_current_record(figures_script, record, monkeypatch, tmp_path):
-    monkeypatch.setattr(figures_script, "OUTPUTS", tmp_path)
+    monkeypatch.setattr(figures_script, "RESULTS", tmp_path)
     (tmp_path / "validation.json").write_text(json.dumps(record))
     assert figures_script.load_recorded_report() == record
 

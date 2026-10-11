@@ -5,9 +5,11 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from cortexprobe.prf.fit import UnitFit, _standard_errors
+from cortexprobe.config import StimulusConfig
+from cortexprobe.prf.fit import PRFFitter, UnitFit, _standard_errors
+from cortexprobe.stimuli import build_apertures
 
-from .conftest import synthesise
+from .conftest import RESOLUTION, synthesise
 
 TRUTH = (12.0, 8.0, 5.0)
 
@@ -105,14 +107,10 @@ def test_invalid_confidence_level_raises(fitter, grid, apertures) -> None:
 
 
 def test_duplicate_frames_do_not_shrink_the_error_bars(grid, apertures, fit_config) -> None:
-    """Showing a frame twice is not a second observation.
+    """Copying both apertures and responses preserves the estimated covariance.
 
-    Without an haemodynamic response the default eight-direction bar stimulus presents every
-    frame exactly twice, since a sweep and its 180 degree return are bit-identical. Counting
-    the copies would have reported standard errors a factor of root two too small.
+    This checks duplicated data, not repeated measurements with independent noise.
     """
-    from cortexprobe.prf.fit import PRFFitter
-
     response = synthesise(grid, apertures, TRUTH, noise=0.2, seed=5)
 
     once = PRFFitter(grid, apertures, fit_config)
@@ -129,12 +127,6 @@ def test_duplicate_frames_do_not_shrink_the_error_bars(grid, apertures, fit_conf
 
 
 def test_degrees_of_freedom_count_distinct_frames(grid, fit_config) -> None:
-    from cortexprobe.config import StimulusConfig
-    from cortexprobe.prf.fit import PRFFitter
-    from cortexprobe.stimuli import build_apertures
-
-    from .conftest import RESOLUTION
-
     eight = build_apertures(StimulusConfig(resolution=RESOLUTION, n_steps=20), "bar").as_float()
     fitter = PRFFitter(grid, eight, fit_config)
 

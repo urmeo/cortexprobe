@@ -1,7 +1,8 @@
 # Security
 
-Supported: latest `main`.
+For a vulnerability affecting the latest `main` branch, [open an issue requesting
+a private reporting channel](https://github.com/urmeo/cortexprobe/issues/new).
+Keep vulnerability details and private data out of the public issue.
 
-1. Report vulnerabilities through [private reporting](https://github.com/urmeo/retinonorm/security/advisories/new).
-2. Include package versions, input shape and a minimal reproducer. Remove private data.
-3. Use trusted packages and validate external arrays. The library performs local numerical analysis.
+Once a private channel is agreed, include package versions, input shapes, and
+a minimal example that reproduces the issue.

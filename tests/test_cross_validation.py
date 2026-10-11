@@ -15,6 +15,8 @@ from cortexprobe.stimuli import build_apertures
 from .conftest import autocorrelated_noise, synthesise
 
 TRUTH = (12.0, 8.0, 5.0)
+SEEDS = range(21, 41)
+LEAK_THRESHOLD = 0.2
 
 
 @pytest.fixture(scope="module")
@@ -68,7 +70,7 @@ def test_real_signal_generalises(validator, grid, apertures) -> None:
 
 
 def test_noise_fails_to_generalise(validator) -> None:
-    """In-sample R² can look mildly encouraging on noise; held-out R² should go negative."""
+    """Seeded white noise has lower held-out R² than in-sample R²."""
     response = np.random.default_rng(4).normal(size=len(validator.apertures))
 
     result = validator.validate_unit(response)
@@ -84,29 +86,28 @@ def test_optimism_is_larger_for_noise_than_for_signal(validator, grid, apertures
     assert noise.optimism > signal.optimism
 
 
-SEEDS = range(21, 41)
-
-LEAK_THRESHOLD = 0.2
-
-
 @pytest.fixture(scope="module")
-def leaky_validator(grid, apertures, fit_config) -> CrossValidator:
-    """Folds split by shuffled frame index: the wrong way to do it, kept for contrast."""
+def random_split_validator(grid, apertures, fit_config) -> CrossValidator:
+    """Shuffled frame groups for comparison with whole-sweep validation."""
     shuffled = np.random.default_rng(0).permutation(len(apertures)) % 4
     return CrossValidator(grid, apertures, shuffled, fit_config)
 
 
-def _leak(validator, leaky, response) -> float:
-    return leaky.validate_unit(response).cv_r2 - validator.validate_unit(response).cv_r2
+def _score_inflation(validator, random_split, response) -> float:
+    return random_split.validate_unit(response).cv_r2 - validator.validate_unit(response).cv_r2
 
 
 @pytest.mark.slow
 def test_random_frame_split_leaks_on_autocorrelated_noise(
-    validator, leaky_validator, apertures
+    validator, random_split_validator, apertures
 ) -> None:
     """Check random-split score inflation over 20 seeds of temporally correlated noise."""
     leaks = [
-        _leak(validator, leaky_validator, autocorrelated_noise(len(apertures), width=3, seed=seed))
+        _score_inflation(
+            validator,
+            random_split_validator,
+            autocorrelated_noise(len(apertures), width=3, seed=seed),
+        )
         for seed in SEEDS
     ]
 
@@ -116,11 +117,15 @@ def test_random_frame_split_leaks_on_autocorrelated_noise(
 
 @pytest.mark.slow
 def test_white_noise_leak_is_indistinguishable_from_zero(
-    validator, leaky_validator, apertures
+    validator, random_split_validator, apertures
 ) -> None:
     """Check that the random-split leakage estimate varies around zero for white noise."""
     leaks = [
-        _leak(validator, leaky_validator, np.random.default_rng(seed).normal(size=len(apertures)))
+        _score_inflation(
+            validator,
+            random_split_validator,
+            np.random.default_rng(seed).normal(size=len(apertures)),
+        )
         for seed in SEEDS
     ]
 
@@ -138,9 +143,7 @@ def test_the_autocorrelated_fixture_has_the_correlation_it_claims(apertures) -> 
     assert float(np.mean(lags)) == pytest.approx(1.0 - 1.0 / 3.0, abs=0.05)
 
 
-def test_held_out_score_uses_train_amplitude(
-    validator, grid, apertures, sequence, fit_config
-) -> None:
+def test_held_out_score_uses_train_amplitude(validator, grid, apertures) -> None:
     """Re-solving amplitude on the test fold would leak; confirm it is not done."""
     response = synthesise(grid, apertures, TRUTH, noise=0.2, seed=3)
     train, test, fitter = validator._folds[0]
@@ -169,7 +172,7 @@ def test_cross_validated_fit_reports_fold_dispersion(validator, grid, apertures)
 
 @pytest.fixture(scope="module")
 def small_stack():
-    """A deliberately tiny stimulus, so fold-sizing tests do not build eighty fitters."""
+    """Eight frames keep fold-size tests small."""
     config = StimulusConfig(resolution=32, n_steps=4, directions=(0, 90))
     grid = Grid(32)
     apertures = build_apertures(config, "bar").as_float()
@@ -177,7 +180,7 @@ def small_stack():
 
 
 def test_every_frame_can_be_its_own_group(small_stack) -> None:
-    """Nothing forbids single-frame groups: each still leaves plenty of training frames."""
+    """Single-frame test groups leave seven training frames in this sequence."""
     grid, apertures, config = small_stack
     groups = np.arange(len(apertures))
 
@@ -237,4 +240,4 @@ def test_validate_all_fits_every_column(validator, grid, apertures) -> None:
     results = validator.validate_all(activations)
 
     assert len(results) == 2
-    assert all(r.cv_r2 > 0.8 for r in results)
+    assert all(result.cv_r2 > 0.8 for result in results)

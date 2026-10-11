@@ -17,16 +17,12 @@ from scipy.stats import t as student_t
 from ..arrays import FloatArray
 from ..config import ConfigError, FitConfig
 from ..geometry import Grid
-from .model import GaussianReceptiveField, predict
+from .model import GaussianReceptiveField, design_matrix, predict
 
 N_PARAMETERS = 5
-
 FITTED_PARAMETERS = ("x0", "y0", "sigma")
-
 BOUND_TOLERANCE = 1e-3
-
 MIN_ON_GRID_VOLUME = 0.99
-
 RESOLUTION_PER_SIGMA = 6.1
 
 
@@ -49,23 +45,31 @@ class UnitFit:
     se_y0: float = float("nan")
     se_sigma: float = float("nan")
     second_field_r2: float = float("nan")
-    """Incremental R2 from an additional candidate field, a misspecification diagnostic.
+    """Incremental R² from an additional candidate field.
 
-    This is reported without an acceptance cutoff; downstream analysis must justify its cut.
+    This model-mismatch diagnostic has no acceptance cutoff.
     """
     x0_at_bound: bool = False
     y0_at_bound: bool = False
     sigma_at_bound: bool = False
     dof: int = 0
     r2_threshold: float = float("inf")
-    """Variance the fit must explain to be accepted. Defaults to a threshold nothing clears,
-    so a fit assembled without one is never mistaken for an accepted pRF."""
+    """Minimum R² for acceptance. An omitted threshold prevents acceptance."""
 
     @classmethod
     def failed(cls) -> UnitFit:
         """A unit that could not be fitted. Never reported as a pRF."""
         nan = float("nan")
-        return cls(nan, nan, nan, nan, nan, 0.0, False, 0)
+        return cls(
+            x0=nan,
+            y0=nan,
+            sigma=nan,
+            beta=nan,
+            baseline=nan,
+            r2=0.0,
+            converged=False,
+            n_fev=0,
+        )
 
     @property
     def eccentricity(self) -> float:
@@ -78,7 +82,7 @@ class UnitFit:
 
     @property
     def accepted(self) -> bool:
-        """Converged above the R2 threshold, with positive beta and unpinned sigma.
+        """Converged at or above the R² threshold, with positive beta and unpinned sigma.
 
         Either sigma bound disqualifies a size estimate. Center bounds, undefined uncertainty,
         and the second-field diagnostic do not alter this policy. Negative beta is suppression.
@@ -124,15 +128,16 @@ def _r_squared(response: FloatArray, fitted: FloatArray) -> float:
 
 
 def _even_at_least(value: float) -> int:
-    """Smallest even integer at or above value, for valid stimulus-resolution advice."""
+    """Smallest even integer at or above ``value``."""
     return 2 * math.ceil(value / 2)
 
 
 def _count_distinct_frames(apertures: FloatArray) -> int:
-    """Count distinct aperture frames for residual degrees of freedom.
+    """Count distinct aperture masks for residual degrees of freedom.
 
-    Exact stimulus copies repeat Jacobian rows and residuals. Counting them as independent
-    observations would shrink errors despite adding no distinct stimulus positions.
+    Repeated masks do not increase this conservative frame count. Copying both masks and
+    responses repeats Jacobian rows and residuals. Repeated measurements with independent
+    noise can add statistical information, which this count does not model.
     """
     flat = apertures.reshape(len(apertures), -1)
     return len({row.tobytes() for row in flat})
@@ -146,9 +151,10 @@ def _standard_errors(
     Singular directions are unidentifiable and return undefined errors. A pseudoinverse alone
     would instead assign zero variance to an unobserved direction.
 
-    ``n_independent`` counts distinct frames, while ``cost`` and ``jacobian`` still cover every
-    frame presented. With ``k`` copies of each frame both ``cost`` and ``J^T J`` scale by ``k``
-    and the factors cancel, leaving the covariance a duplicate-free stimulus would have given.
+    ``n_independent`` counts distinct masks; ``cost`` and ``jacobian`` cover all observations.
+    Copying both masks and responses ``k`` times scales ``cost`` and ``J^T J`` by ``k``.
+    The factors cancel, preserving the covariance from the original pairs. This explanation
+    does not apply to repeated masks with independent response noise.
     """
     if (
         jacobian.ndim != 2
@@ -204,9 +210,7 @@ class PRFFitter:
         self._check_sigma_ceiling()
         self.n_independent_frames = _count_distinct_frames(self.apertures)
         self.candidates = self._build_candidates()
-        self._predictions = np.column_stack(
-            [predict(candidate.weights(grid), self.apertures) for candidate in self.candidates]
-        )
+        self._predictions = design_matrix(self.candidates, grid, self.apertures)
 
     def _check_sigma_ceiling(self) -> None:
         """Check sampled circular-field mass at the centered sigma ceiling.
@@ -246,19 +250,16 @@ class PRFFitter:
         centres = np.linspace(-radius, radius, self.config.grid_size)
         sigmas = np.geomspace(sigma_low, sigma_high, n_sigma)
 
-        candidates = [
+        return [
             GaussianReceptiveField(float(x), float(y), float(sigma))
             for x in centres
             for y in centres
             if np.hypot(x, y) <= radius
             for sigma in sigmas
         ]
-        if not candidates:
-            raise ValueError("candidate grid is empty; check grid_size and sigma_bounds")
-        return candidates
 
     def _bounds_hit(self, x0: float, y0: float, sigma: float) -> tuple[bool, bool, bool]:
-        """Which of the three searched parameters came to rest against a search bound."""
+        """Flag each fitted parameter within the tolerance of either search bound."""
         lower, upper = self.bounds
         pinned = [
             abs(value - low) <= BOUND_TOLERANCE or abs(value - high) <= BOUND_TOLERANCE
@@ -359,4 +360,4 @@ class PRFFitter:
             raise ValueError("activations must have shape (frames, units)")
         if activations.shape[0] != self.n_frames:
             raise ValueError("activations must have one row per stimulus frame")
-        return [self.fit_unit(activations[:, unit]) for unit in range(activations.shape[1])]
+        return [self.fit_unit(response) for response in activations.T]

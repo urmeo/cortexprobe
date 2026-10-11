@@ -1,7 +1,7 @@
-"""Measure the recorded synthetic validation tables in README.md.
+"""Measure the synthetic validation tables in docs/validation.md.
 
-Load configs/validation.json, write outputs/validation.json and splice the four marked README
-tables. --check compares deterministic measurements within tolerance and verifies those tables,
+Load configs/validation.json, write results/validation.json and update four marked tables.
+--check compares deterministic measurements within tolerance and verifies those tables,
 without writing files. It does not check supplemental figure pixels or remeasure timings.
 
 Reproduced values retain their original numbers, date and environment. --runtime explicitly
@@ -32,7 +32,7 @@ from cortexprobe.prf.validation import CrossValidator
 from cortexprobe.stimuli import build_apertures
 
 ROOT = Path(__file__).resolve().parent.parent
-OUTPUTS = ROOT / "outputs"
+RESULTS = ROOT / "results"
 
 CONFIG = RunConfig.load(ROOT / "configs" / "validation.json")
 
@@ -81,24 +81,24 @@ def autocorrelated_noise(n_frames, width=CARRIER_WIDTH, seed=21):
 def measure_recovery(grid, apertures, fitter) -> dict[str, Any]:
     rows = []
     for noise in RECOVERY_NOISE:
-        positions, sigmas, scores = [], [], []
+        position_errors, sigma_errors, scores = [], [], []
         for truth in GROUND_TRUTH:
             fit = fitter.fit_unit(
                 synthesise(grid, apertures, truth, noise=noise, seed=RECOVERY_SEED)
             )
-            positions.append(float(np.hypot(fit.x0 - truth[0], fit.y0 - truth[1])))
-            sigmas.append(abs(fit.sigma - truth[2]) / truth[2] * 100.0)
+            position_errors.append(float(np.hypot(fit.x0 - truth[0], fit.y0 - truth[1])))
+            sigma_errors.append(abs(fit.sigma - truth[2]) / truth[2] * 100.0)
             scores.append(fit.r2)
         rows.append(
             {
                 "noise": noise,
                 "n": len(GROUND_TRUTH),
-                "position_max": max(positions),
-                "position_mean": float(np.mean(positions)),
-                "position_sd": float(np.std(positions, ddof=1)),
-                "sigma_max": max(sigmas),
-                "sigma_mean": float(np.mean(sigmas)),
-                "sigma_sd": float(np.std(sigmas, ddof=1)),
+                "position_max": max(position_errors),
+                "position_mean": float(np.mean(position_errors)),
+                "position_sd": float(np.std(position_errors, ddof=1)),
+                "sigma_max": max(sigma_errors),
+                "sigma_mean": float(np.mean(sigma_errors)),
+                "sigma_sd": float(np.std(sigma_errors, ddof=1)),
                 "r2_min": min(scores),
             }
         )
@@ -144,15 +144,15 @@ def measure_uncertainty(grid, apertures, fitter) -> dict[str, Any]:
                 low, high = fitter.fit_unit(response).confidence_interval("x0")
                 covered += bool(low <= truth[0] <= high)
             rate = covered / COVERAGE_REALISATIONS
-            half = 1.96 * float(np.sqrt(rate * (1.0 - rate) / COVERAGE_REALISATIONS))
+            half_width = 1.96 * float(np.sqrt(rate * (1.0 - rate) / COVERAGE_REALISATIONS))
             coverage.append(
                 {
                     "position": "interior" if truth == COVERAGE_TRUTHS[0] else "near edge",
                     "noise": noise,
                     "n": COVERAGE_REALISATIONS,
                     "coverage": rate,
-                    "ci_low": rate - half,
-                    "ci_high": rate + half,
+                    "ci_low": rate - half_width,
+                    "ci_high": rate + half_width,
                 }
             )
     return {"rows": rows, "coverage": coverage, "nominal": 0.95}
@@ -161,11 +161,11 @@ def measure_uncertainty(grid, apertures, fitter) -> dict[str, Any]:
 def measure_cross_validation(grid, apertures, sequence) -> dict[str, Any]:
     grouped = CrossValidator(grid, apertures, sequence.group, CONFIG.fit)
     shuffled = np.random.default_rng(SPLIT_SEED).permutation(len(apertures)) % 4
-    leaky = CrossValidator(grid, apertures, shuffled, CONFIG.fit)
+    random_split = CrossValidator(grid, apertures, shuffled, CONFIG.fit)
 
     rows, lags = [], []
     for label in ("white", "autocorrelated"):
-        grouped_scores, leaky_scores = [], []
+        grouped_scores, random_scores = [], []
         for seed in CV_SEEDS:
             if label == "white":
                 response = np.random.default_rng(seed).normal(size=len(apertures))
@@ -173,20 +173,20 @@ def measure_cross_validation(grid, apertures, sequence) -> dict[str, Any]:
                 response = autocorrelated_noise(len(apertures), CARRIER_WIDTH, seed)
                 lags.append(float(np.corrcoef(response[:-1], response[1:])[0, 1]))
             grouped_scores.append(grouped.validate_unit(response).cv_r2)
-            leaky_scores.append(leaky.validate_unit(response).cv_r2)
+            random_scores.append(random_split.validate_unit(response).cv_r2)
 
-        leaks = np.asarray(leaky_scores) - np.asarray(grouped_scores)
+        differences = np.asarray(random_scores) - np.asarray(grouped_scores)
         rows.append(
             {
                 "response": label,
                 "n": len(CV_SEEDS),
                 "grouped_mean": float(np.mean(grouped_scores)),
                 "grouped_sd": float(np.std(grouped_scores, ddof=1)),
-                "leaky_mean": float(np.mean(leaky_scores)),
-                "leaky_sd": float(np.std(leaky_scores, ddof=1)),
-                "leak_mean": float(np.mean(leaks)),
-                "leak_sd": float(np.std(leaks, ddof=1)),
-                "leak_positive": int((leaks > 0.0).sum()),
+                "leaky_mean": float(np.mean(random_scores)),
+                "leaky_sd": float(np.std(random_scores, ddof=1)),
+                "leak_mean": float(np.mean(differences)),
+                "leak_sd": float(np.std(differences, ddof=1)),
+                "leak_positive": int((differences > 0.0).sum()),
             }
         )
     return {
@@ -204,9 +204,9 @@ def measure_runtime(grid, apertures, sequence, fitter) -> dict[str, Any]:
     rng = np.random.default_rng(RUNTIME_SEED)
     radius = grid.radius * 0.7
 
-    def units(n):
+    def generate_units(n_units):
         columns = []
-        for _ in range(n):
+        for _ in range(n_units):
             x0, y0 = rng.uniform(-radius, radius, size=2)
             clean = predict(
                 GaussianReceptiveField(x0, y0, rng.uniform(3.0, 8.0)).weights(grid), apertures
@@ -215,8 +215,8 @@ def measure_runtime(grid, apertures, sequence, fitter) -> dict[str, Any]:
         return np.column_stack(columns)
 
     rows = []
-    for n in RUNTIME_UNITS:
-        activations = units(n)
+    for n_units in RUNTIME_UNITS:
+        activations = generate_units(n_units)
         start = time.perf_counter()
         fitter.fit_all(activations)
         fit_seconds = time.perf_counter() - start
@@ -227,9 +227,9 @@ def measure_runtime(grid, apertures, sequence, fitter) -> dict[str, Any]:
 
         rows.append(
             {
-                "units": n,
+                "units": n_units,
                 "fit_seconds": fit_seconds,
-                "per_unit_ms": fit_seconds / n * 1000.0,
+                "per_unit_ms": fit_seconds / n_units * 1000.0,
                 "cv_seconds": cv_seconds,
                 "cv_factor": cv_seconds / fit_seconds,
             }
@@ -257,7 +257,7 @@ def footer(environment: dict[str, str], digest: str, generated: str, note: str =
 
 
 def render(report: dict[str, Any]) -> dict[str, str]:
-    """One Markdown block per README section, keyed by its marker name."""
+    """One Markdown block per validation section, keyed by its marker name."""
     blocks = {}
 
     recovery = report["recovery"]
@@ -360,7 +360,7 @@ def splice(text: str, blocks: dict[str, str]) -> str:
             re.DOTALL,
         )
         if not pattern.search(text):
-            raise SystemExit(f"README.md has no generated region named {name!r}")
+            raise SystemExit(f"docs/validation.md has no generated region named {name!r}")
         text = pattern.sub(
             lambda match, body=block: f"{match.group(1)}\n{body}\n{match.group(2)}", text
         )
@@ -368,9 +368,7 @@ def splice(text: str, blocks: dict[str, str]) -> str:
 
 
 def rounded(value: Any, places: int = 6) -> Any:
-    """Record six decimal places; the README tables display fewer places."""
-    if isinstance(value, (bool, int)):
-        return value
+    """Record six decimal places; the validation tables display fewer places."""
     if isinstance(value, float):
         return round(value, places)
     if isinstance(value, dict):
@@ -384,27 +382,29 @@ def drifted(recorded: Any, fresh: Any, path: str = "") -> list[str]:
     """Find changes exceeding relative 1e-5 or absolute 1e-6 float tolerance."""
     if isinstance(recorded, dict) and isinstance(fresh, dict):
         problems = []
-        for key in sorted(set(recorded) | set(fresh)):
+        for key in sorted(recorded.keys() | fresh.keys()):
             if key not in recorded or key not in fresh:
                 problems.append(f"{path}{key}: present in only one report")
             else:
-                problems += drifted(recorded[key], fresh[key], f"{path}{key}.")
+                problems.extend(drifted(recorded[key], fresh[key], f"{path}{key}."))
         return problems
     if isinstance(recorded, list) and isinstance(fresh, list):
         if len(recorded) != len(fresh):
             return [f"{path.rstrip('.')}: length {len(recorded)} became {len(fresh)}"]
         return [
             problem
-            for index, (a, b) in enumerate(zip(recorded, fresh))
-            for problem in drifted(a, b, f"{path}{index}.")
+            for index, (recorded_item, fresh_item) in enumerate(zip(recorded, fresh))
+            for problem in drifted(recorded_item, fresh_item, f"{path}{index}.")
         ]
     if isinstance(recorded, float) or isinstance(fresh, float):
-        if not math.isclose(recorded, fresh, rel_tol=1e-5, abs_tol=1e-6):
-            return [f"{path.rstrip('.')}: {recorded!r} became {fresh!r}"]
+        try:
+            if math.isclose(recorded, fresh, rel_tol=1e-5, abs_tol=1e-6):
+                return []
+        except (OverflowError, TypeError):
+            pass
+    elif recorded == fresh:
         return []
-    if recorded != fresh:
-        return [f"{path.rstrip('.')}: {recorded!r} became {fresh!r}"]
-    return []
+    return [f"{path.rstrip('.')}: {recorded!r} became {fresh!r}"]
 
 
 def measurements(report: dict[str, Any]) -> dict[str, Any]:
@@ -420,7 +420,7 @@ def measurements(report: dict[str, Any]) -> dict[str, Any]:
     return {key: value for key, value in report.items() if key not in ignored}
 
 
-def run_check(report: dict[str, Any], previous: dict[str, Any], readme: str) -> int:
+def run_check(report: dict[str, Any], previous: dict[str, Any], document: str) -> int:
     """Verify the committed report still reproduces. Writes nothing."""
     if not previous:
         print("no committed report to check against; run without --check first")
@@ -435,11 +435,11 @@ def run_check(report: dict[str, Any], previous: dict[str, Any], readme: str) -> 
         return 1
 
     blocks = render(previous)
-    if splice(readme, blocks) != readme:
-        print("README.md tables do not match the committed report; rerun without --check")
+    if splice(document, blocks) != document:
+        print("docs/validation.md tables do not match the committed report; rerun without --check")
         return 1
     print(
-        "recorded deterministic measurements reproduce within tolerance; README tables match "
+        "recorded deterministic measurements reproduce within tolerance; validation tables match "
         "(timings and figure pixels not rechecked); "
         f"recorded on {previous['environment']['platform']}, checked on "
         f"{current_environment()['platform']} Python {platform.python_version()}"
@@ -463,15 +463,15 @@ def main(argv: list[str] | None = None) -> int:
     )
     arguments = parser.parse_args(argv)
 
-    readme_path = ROOT / "README.md"
-    readme = readme_path.read_text()
+    document_path = ROOT / "docs" / "validation.md"
+    document = document_path.read_text()
 
     grid = Grid(CONFIG.stimulus.resolution)
     sequence = build_apertures(CONFIG.stimulus, "bar")
     apertures = sequence.as_float()
     fitter = PRFFitter(grid, apertures, CONFIG.fit)
 
-    previous_path = OUTPUTS / "validation.json"
+    previous_path = RESULTS / "validation.json"
     previous = json.loads(previous_path.read_text()) if previous_path.exists() else {}
 
     report: dict[str, Any] = {
@@ -491,19 +491,20 @@ def main(argv: list[str] | None = None) -> int:
     report = rounded(report)
 
     if arguments.check:
-        return run_check(report, previous, readme)
+        return run_check(report, previous, document)
 
     running_in = current_environment()
-    unchanged = bool(previous) and not drifted(measurements(previous), measurements(report))
+    recorded_measurements = measurements(previous)
+    unchanged = bool(previous) and not drifted(recorded_measurements, measurements(report))
     if unchanged:
-        report.update(measurements(previous))
+        report.update(recorded_measurements)
     report["environment"] = previous["environment"] if unchanged else running_in
     report["generated"] = previous["generated"] if unchanged else date.today().isoformat()
 
-    refresh = arguments.runtime or "runtime" not in previous
-    if refresh:
+    refresh_runtime = arguments.runtime or "runtime" not in previous
+    if refresh_runtime:
         report["runtime"] = rounded(measure_runtime(grid, apertures, sequence, fitter))
-        if unchanged or previous:
+        if previous:
             report["runtime_environment"] = running_in
             report["runtime_generated"] = date.today().isoformat()
             report["runtime_config_digest"] = report["config_digest"]
@@ -519,17 +520,17 @@ def main(argv: list[str] | None = None) -> int:
             )
 
     blocks = render(report)
-    spliced = splice(readme, blocks)
+    spliced = splice(document, blocks)
 
-    OUTPUTS.mkdir(exist_ok=True)
+    RESULTS.mkdir(exist_ok=True)
     previous_path.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
 
-    readme_path.write_text(spliced)
+    document_path.write_text(spliced)
 
     print(f"wrote {previous_path.relative_to(ROOT)}")
     state = "unchanged" if unchanged else "updated"
-    timing = "re-measured" if refresh else "carried forward"
-    print(f"README tables spliced; measurements {state}, runtime {timing}")
+    timing = "re-measured" if refresh_runtime else "carried forward"
+    print(f"Validation tables updated; measurements {state}, runtime {timing}")
     if unchanged and running_in != report["environment"]:
         print(
             "note: these numbers reproduced here, in a different environment than the one on "

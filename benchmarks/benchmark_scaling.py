@@ -77,13 +77,13 @@ def main(argv: list[str] | None = None) -> None:
     apertures = sequence.as_float()
     fit_config = FitConfig(grid_size=10, sigma_bounds=(1.0, SIGMA_HIGH))
 
-    setup, fitter = time_call(PRFFitter, grid, apertures, fit_config)
+    setup_seconds, fitter = time_call(PRFFitter, grid, apertures, fit_config)
     print(
         f"grid {arguments.resolution}px | {fitter.n_frames} frames | "
-        f"{len(fitter.candidates)} candidates | setup {setup * 1000:.0f} ms\n"
+        f"{len(fitter.candidates)} candidates | setup {setup_seconds * 1000:.0f} ms\n"
     )
 
-    counts: list[int] = [n for n in UNIT_COUNTS if n <= arguments.max_units]
+    counts = [count for count in UNIT_COUNTS if count <= arguments.max_units]
     print(
         f"{'units':>6} {'fit (s)':>9} {'per unit (ms)':>14} "
         f"{'cv (s)':>9} {'cv per unit (ms)':>17} {'cv factor':>10}"
@@ -101,10 +101,11 @@ def main(argv: list[str] | None = None) -> None:
             f"{cv_seconds / fit_seconds:>10.1f}x"
         )
 
-    largest = counts[-1]
-    activations = make_units(grid, apertures, largest)
-    per_unit = time_call(fitter.fit_all, activations)[0] / largest
-    print(f"\nprojected from last measurement: 10k units ~ {per_unit * 10_000 / 60:.1f} min")
+    projected_minutes = fit_seconds / n_units * 10_000 / 60
+    print(
+        f"\nLinear projection from {n_units} units: 10,000 units ~ {projected_minutes:.1f} min "
+        "(not measured)"
+    )
 
 
 if __name__ == "__main__":

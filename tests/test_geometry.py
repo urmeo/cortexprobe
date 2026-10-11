@@ -45,7 +45,6 @@ def test_x_increases_rightward() -> None:
 
 
 def test_y_increases_upward_not_downward() -> None:
-    """Image arrays index downward; a fitted y0 must read the way a person expects."""
     grid = Grid(8)
 
     assert grid.y[0, 0] > 0.0 > grid.y[-1, 0]
@@ -65,11 +64,11 @@ def test_eccentricity_is_the_distance_from_the_origin() -> None:
 
 
 @pytest.mark.parametrize(
-    ("x", "y", "expected"),
-    [(1.0, 0.0, 0.0), (0.0, 1.0, 90.0), (-1.0, 0.0, 180.0), (0.0, -1.0, 270.0)],
+    ("row", "column", "expected"),
+    [(1, 2, 0.0), (0, 1, 90.0), (1, 0, 180.0), (2, 1, 270.0)],
 )
-def test_polar_angle_runs_counter_clockwise_from_the_positive_x_axis(x, y, expected) -> None:
-    assert np.degrees(np.arctan2(y, x)) % 360.0 == pytest.approx(expected)
+def test_polar_angle_runs_counter_clockwise_from_the_positive_x_axis(row, column, expected) -> None:
+    assert Grid(3).polar_angle[row, column] == pytest.approx(expected)
 
 
 def test_polar_angle_covers_the_full_circle() -> None:
@@ -95,7 +94,6 @@ def test_field_mask_is_symmetric() -> None:
 
 
 def test_derived_arrays_are_cached_not_rebuilt() -> None:
-    """Every fit builds candidate fields on the same grid; rebuilding these would be waste."""
     grid = Grid(32)
 
     assert grid.x is grid.x

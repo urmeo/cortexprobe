@@ -20,7 +20,7 @@ from .model import GaussianReceptiveField, predict
 
 @dataclass(frozen=True)
 class CrossValidatedFit:
-    """A pRF fitted on all frames, scored on frames it never saw."""
+    """Full-data pRF fit and held-out scores from separately fitted fold models."""
 
     fit: UnitFit
     fold_r2: tuple[float, ...]
@@ -33,11 +33,13 @@ class CrossValidatedFit:
 
     @property
     def cv_r2_sd(self) -> float:
+        """Sample standard deviation of finite held-out R² scores."""
         scores = [score for score in self.fold_r2 if np.isfinite(score)]
         return float(np.std(scores, ddof=1)) if len(scores) > 1 else float("nan")
 
     @property
     def n_folds(self) -> int:
+        """Number of retained folds, including folds with undefined scores."""
         return len(self.fold_r2)
 
     @property
@@ -76,8 +78,9 @@ class LeaveOneGroupOut:
 class CrossValidator:
     """Fits and cross-validates pRFs against a grouped stimulus sequence.
 
-    Fitters are reused across units. Folds with at most five training frames are skipped;
-    failed folds yield NaN scores. The reported mean uses only finite retained fold scores.
+    Fitters are reused across units. Folds with at most five training frames are skipped.
+    Invalid fitted geometry yields NaN scores. Finite fits are scored even if refinement did
+    not converge. The reported mean uses only finite retained fold scores.
     """
 
     def __init__(
@@ -130,4 +133,4 @@ class CrossValidator:
             raise ValueError("activations must have shape (frames, units)")
         if activations.shape[0] != len(self.apertures):
             raise ValueError("activations must have one row per stimulus frame")
-        return [self.validate_unit(activations[:, unit]) for unit in range(activations.shape[1])]
+        return [self.validate_unit(response) for response in activations.T]
