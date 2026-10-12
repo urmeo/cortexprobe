@@ -10,7 +10,7 @@ readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
 requires-python = ">=3.9"
-authors = [{ name = "urmeo" }]
+authors = [{ name = "urme" }]
 keywords = ["receptive-field", "synthetic-data", "grouped-validation", "uncertainty"]
 classifiers = [
   "Intended Audience :: Science/Research",

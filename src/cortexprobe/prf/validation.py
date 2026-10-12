@@ -52,7 +52,7 @@ class LeaveOneGroupOut:
     """Iterates folds that hold out one whole sweep group at a time."""
 
     def __init__(self, groups: Sequence[int]) -> None:
-        self.groups = np.asarray(groups)
+        self.groups = np.array(groups, copy=True)
         if self.groups.ndim != 1:
             raise ValueError("groups must be one-dimensional")
         try:
@@ -91,15 +91,16 @@ class CrossValidator:
         config: FitConfig,
     ) -> None:
         self.grid = grid
-        self.apertures = np.asarray(apertures, dtype=np.float64)
+        apertures = np.asarray(apertures, dtype=np.float64)
         self.config = config
         self.splitter = LeaveOneGroupOut(groups)
-        if self.apertures.ndim != 3:
+        if apertures.ndim != 3:
             raise ValueError("apertures must have shape (frames, height, width)")
-        if len(self.splitter.groups) != len(self.apertures):
+        if len(self.splitter.groups) != len(apertures):
             raise ValueError("groups must have one group per stimulus frame")
 
-        self._full = PRFFitter(grid, self.apertures, config)
+        self._full = PRFFitter(grid, apertures, config)
+        self.apertures = self._full.apertures
         self._folds: list[tuple[IntArray, IntArray, PRFFitter]] = []
         for train, test in self.splitter.splits():
             if len(train) <= N_PARAMETERS:

@@ -1,8 +1,8 @@
 # Videos
 
-These two 10-second, silent videos show the implemented synthetic workflow. The README
-uses animated GIF previews. Each preview opens a video with playback controls.
-The demonstrations reuse the existing configuration and example; they add no
+These two 10-second, silent videos show the synthetic workflow. The README uses
+animated GIF previews that open videos with playback controls. Both clips use the
+same configuration and known field as the response-curve example; they add no
 independent evaluation result.
 
 ## Apertures and responses
@@ -49,9 +49,8 @@ baseline stay fixed while the video steps through predictions on the excluded gr
 The animation does not show optimizer iterations or repeated fits to each new
 test frame. Displaying held-out observations does not feed them to the fit.
 
-The fold scores summarize this one synthetic response. Their mean is the mean
-of finite fold R² values, rather than one R² over pooled predictions. Reusing
-seed 7 reproduces the existing example; it is not an independent validation.
+The fold scores summarize this one synthetic response. Their mean uses finite
+fold R² values, rather than one R² over pooled predictions.
 See [Pipeline](../pipeline.md) for the fitting procedure and
 [Validation](../validation.md) for the recorded experiments and their limits.
 
@@ -73,4 +72,3 @@ versions even when the underlying masks and predictions match.
 
 Both clips contain visible labels and have no audio. The videos use manual
 playback controls and do not autoplay. GIF previews animate in the README.
-No neural network or human data is evaluated in either demonstration.

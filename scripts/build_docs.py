@@ -189,7 +189,6 @@ def render_page(source: Path) -> str:
     </div>
   </header>
   <main id="main" class="container">
-    <div class="page-intro"><p class="eyebrow">Synthetic receptive-field experiments</p></div>
     <article class="content">{content}</article>
   </main>
   <footer class="site-footer">
@@ -199,7 +198,7 @@ def render_page(source: Path) -> str:
       <a href="{relative_url(Path("CONTRIBUTING.html"), page)}">Contributing</a>
       <a href="{relative_url(Path("SECURITY.html"), page)}">Security</a>
       <a href="{relative_url(Path("LICENSE"), page)}">MIT license</a>
-      <span>By urmeo</span>
+      <span>By urme</span>
     </div>
   </footer>
 </body>
@@ -212,6 +211,7 @@ class PageLinks(HTMLParser):
         super().__init__()
         self.links: list[str] = []
         self.ids: set[str] = set()
+        self.duplicate_ids: set[str] = set()
 
     def handle_starttag(self, _tag: str, attrs: list[tuple[str, str | None]]) -> None:
         for name, value in attrs:
@@ -219,6 +219,8 @@ class PageLinks(HTMLParser):
                 if name in ("href", "src", "poster"):
                     self.links.append(value)
                 elif name == "id":
+                    if value in self.ids:
+                        self.duplicate_ids.add(value)
                     self.ids.add(value)
 
 
@@ -229,6 +231,10 @@ def validate_links(output: Path) -> None:
     for page in output.rglob("*.html"):
         parser = PageLinks()
         parser.feed(page.read_text(encoding="utf-8"))
+        if parser.duplicate_ids:
+            raise ValueError(
+                f"{page.relative_to(output)}: duplicate HTML ids {sorted(parser.duplicate_ids)}"
+            )
         pages[page] = parser
     for page, parser in pages.items():
         for value in parser.links:

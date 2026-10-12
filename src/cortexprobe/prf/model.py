@@ -51,8 +51,14 @@ class GaussianReceptiveField(ReceptiveField):
                 raise ValueError(f"{name} must be finite")
         if self.sigma <= 0:
             raise ValueError("sigma must be positive")
-        variance = self.sigma * self.sigma
-        if variance == 0.0 or not math.isfinite(2.0 * math.pi * variance):
+        sigma = float(self.sigma)
+        variance = sigma * sigma
+        normalization = 2.0 * math.pi * variance
+        if (
+            normalization == 0.0
+            or not math.isfinite(normalization)
+            or not math.isfinite(1.0 / normalization)
+        ):
             raise ValueError("sigma cannot be represented by the Gaussian model")
 
     @property

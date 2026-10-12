@@ -28,12 +28,9 @@ python scripts/generate_figures.py
 | [Model mismatch](misspecification.png) | Single-Gaussian fits to single- and two-lobe responses | Supplemental diagnostic |
 | [Runtime](runtime.png) | Fit and cross-validation timings by unit count | Recorded hardware timings |
 
-See [Validation](../validation.md) for measured conditions, uncertainty
-assumptions, and provenance. [Pipeline details](../pipeline.md) explain the two
-fitting paths. The pipeline diagram shows the implemented workflow; the response
-curves illustrate a seeded synthetic run. These figures do not add a new network
-or human-data evaluation.
-The autocorrelation curves describe the noise inputs, not model fit quality.
+See [Validation](../validation.md) for experiment conditions, uncertainty
+assumptions, and provenance, or [Pipeline](../pipeline.md) for the fitting steps.
+Autocorrelation curves describe the noise inputs, not model fit quality.
 
 [Videos](../media/) show aperture movement and held-out prediction, with animated
 previews, playback controls, and the full demonstration conditions.

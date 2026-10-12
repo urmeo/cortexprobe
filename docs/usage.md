@@ -19,21 +19,20 @@ held-out R²=1.000
 The example creates 80 bar-aperture frames, generates a noiseless response from
 a known Gaussian field, and fits its center, width, amplitude, and baseline.
 The held-out score comes from separate models trained on the remaining sweeps.
-The full-data fit and held-out scores are stored separately in
-`CrossValidatedFit`.
+`CrossValidatedFit` stores the full-data `fit` and held-out `fold_r2` scores
+separately. Its `cv_r2` is the mean of finite fold scores.
 
 The same steps in Python:
 
 ```python
 from cortexprobe import FitConfig, StimulusConfig
-from cortexprobe.geometry import Grid
 from cortexprobe.prf.fit import PRFFitter
 from cortexprobe.prf.model import GaussianReceptiveField, predict
 from cortexprobe.prf.validation import CrossValidator
 from cortexprobe.stimuli import build_apertures
 
-grid = Grid(64)
 sequence = build_apertures(StimulusConfig(resolution=64, n_steps=20, directions=(0, 45, 90, 135)))
+grid = sequence.grid
 apertures = sequence.as_float()
 config = FitConfig(grid_size=10, sigma_bounds=(1.0, 10.0))
 
@@ -58,7 +57,8 @@ print(f"held-out R²={validated.cv_r2:.3f}")
 
 `PRFFitter.fit_unit` takes one response per frame. `fit_all` fits one field per
 response column. `CrossValidator.validate_unit` and `validate_all` use the same
-response shapes.
+response shapes. The returned fit uses `x0`, `y0`, and `sigma` for geometry,
+`beta` for amplitude, and `baseline` for the offset.
 
 Aperture generation prunes similar frames across groups. Use the retained
 `sequence.n_frames` when preparing responses. Externally supplied apertures do

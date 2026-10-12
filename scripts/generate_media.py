@@ -17,6 +17,7 @@ import argparse
 import shutil
 import subprocess
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 import matplotlib
 
@@ -68,77 +69,89 @@ plt.rcParams.update(
 
 
 def encode_media(name, figure, draw_frame, poster_frame, output_dir, ffmpeg):
-    """Stream rendered frames to MP4, then derive a compact looping GIF."""
-    output_dir.mkdir(parents=True, exist_ok=True)
-    video = output_dir / f"{name}.mp4"
-    command = [
-        ffmpeg,
-        "-hide_banner",
-        "-loglevel",
-        "error",
-        "-y",
-        "-f",
-        "rawvideo",
-        "-pixel_format",
-        "rgb24",
-        "-video_size",
-        f"{WIDTH}x{HEIGHT}",
-        "-framerate",
-        str(FPS),
-        "-i",
-        "pipe:0",
-        "-an",
-        "-c:v",
-        "libx264",
-        "-preset",
-        "medium",
-        "-crf",
-        "22",
-        "-threads",
-        "2",
-        "-pix_fmt",
-        "yuv420p",
-        "-movflags",
-        "+faststart",
-        str(video),
-    ]
-    process = subprocess.Popen(command, stdin=subprocess.PIPE)
+    """Publish the MP4, looping GIF and poster only after both encoders succeed."""
     try:
-        for frame in range(FRAME_COUNT):
-            draw_frame(frame)
-            figure.canvas.draw()
-            if frame == poster_frame:
-                figure.savefig(output_dir / f"{name}.png", dpi=DPI)
-            process.stdin.write(np.asarray(figure.canvas.buffer_rgba())[:, :, :3].tobytes())
-        process.stdin.close()
-        if process.wait():
-            raise RuntimeError(f"FFmpeg could not encode {video}")
+        output_dir.mkdir(parents=True, exist_ok=True)
+        with TemporaryDirectory(prefix=f".{name}-", dir=output_dir) as temporary:
+            staging = Path(temporary)
+            video = staging / f"{name}.mp4"
+            command = [
+                ffmpeg,
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-y",
+                "-f",
+                "rawvideo",
+                "-pixel_format",
+                "rgb24",
+                "-video_size",
+                f"{WIDTH}x{HEIGHT}",
+                "-framerate",
+                str(FPS),
+                "-i",
+                "pipe:0",
+                "-an",
+                "-c:v",
+                "libx264",
+                "-preset",
+                "medium",
+                "-crf",
+                "22",
+                "-threads",
+                "2",
+                "-pix_fmt",
+                "yuv420p",
+                "-movflags",
+                "+faststart",
+                str(video),
+            ]
+            process = subprocess.Popen(command, stdin=subprocess.PIPE)
+            try:
+                for frame in range(FRAME_COUNT):
+                    draw_frame(frame)
+                    figure.canvas.draw()
+                    if frame == poster_frame:
+                        figure.savefig(staging / f"{name}.png", dpi=DPI)
+                    process.stdin.write(np.asarray(figure.canvas.buffer_rgba())[:, :, :3].tobytes())
+                process.stdin.close()
+                if process.wait():
+                    raise RuntimeError(f"FFmpeg could not encode {output_dir / video.name}")
+            finally:
+                if process.poll() is None:
+                    process.kill()
+                try:
+                    process.stdin.close()
+                except BrokenPipeError:
+                    pass
+                finally:
+                    process.wait()
+            subprocess.run(
+                [
+                    ffmpeg,
+                    "-hide_banner",
+                    "-loglevel",
+                    "error",
+                    "-y",
+                    "-i",
+                    str(video),
+                    "-filter_complex_threads",
+                    "1",
+                    "-filter_complex",
+                    f"fps=8,scale={GIF_WIDTH}:-1:flags=lanczos,split[a][b];"
+                    "[a]palettegen=max_colors=96:stats_mode=diff[p];"
+                    "[b][p]paletteuse=dither=bayer:bayer_scale=4:diff_mode=rectangle",
+                    "-loop",
+                    "0",
+                    str(staging / f"{name}.gif"),
+                ],
+                check=True,
+            )
+            for extension in ("mp4", "gif", "png"):
+                path = staging / f"{name}.{extension}"
+                path.replace(output_dir / path.name)
     finally:
-        if process.poll() is None:
-            process.kill()
-            process.wait()
         plt.close(figure)
-    subprocess.run(
-        [
-            ffmpeg,
-            "-hide_banner",
-            "-loglevel",
-            "error",
-            "-y",
-            "-i",
-            str(video),
-            "-filter_complex_threads",
-            "1",
-            "-filter_complex",
-            f"fps=8,scale={GIF_WIDTH}:-1:flags=lanczos,split[a][b];"
-            "[a]palettegen=max_colors=96:stats_mode=diff[p];"
-            "[b][p]paletteuse=dither=bayer:bayer_scale=4:diff_mode=rectangle",
-            "-loop",
-            "0",
-            str(output_dir / f"{name}.gif"),
-        ],
-        check=True,
-    )
     print(f"wrote {name}.mp4, .gif and .png", flush=True)
 
 

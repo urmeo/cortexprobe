@@ -3,7 +3,7 @@ title: "CortexProbe: synthetic receptive field fitting and grouped validation"
 message: "If you use CortexProbe, cite this software."
 type: software
 authors:
-  - given-names: urmeo
+  - given-names: urme
 license: MIT
 version: 0.2.0
 repository-code: "https://github.com/urmeo/cortexprobe"

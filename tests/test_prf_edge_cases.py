@@ -103,6 +103,21 @@ def test_fitter_rejects_non_frame_stack(grid) -> None:
         PRFFitter(grid, np.ones((64, 64)), FitConfig())
 
 
+def test_fitter_keeps_cached_predictions_aligned_after_caller_mutates_apertures(
+    grid, apertures, fit_config
+) -> None:
+    original = apertures.copy()
+    response = synthesise(grid, original, (12.0, 8.0, 5.0))
+    fitter = PRFFitter(grid, original, fit_config)
+
+    original[:] = 0.0
+    fit = fitter.fit_unit(response)
+
+    assert fit.accepted
+    assert fit.r2 > 0.99
+    assert (fit.x0, fit.y0, fit.sigma) == pytest.approx((12.0, 8.0, 5.0), abs=0.01)
+
+
 def test_zero_response_is_not_fitted(fitter) -> None:
     assert not fitter.fit_unit(np.zeros(fitter.n_frames)).accepted
 

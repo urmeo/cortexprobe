@@ -23,9 +23,6 @@ matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt
 import numpy as np
-
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-
 from generate_validation_report import (
     CARRIER_WIDTH,
     CONFIG,

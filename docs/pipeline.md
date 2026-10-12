@@ -4,13 +4,9 @@ CortexProbe fits a Gaussian receptive field and checks its predictions on held-o
 groups. The examples and recorded experiments use synthetic responses. The
 full-data estimate and validation scores come from separate fits to shared inputs.
 
-[![Inputs branch into full-data estimation and grouped training-fold refits before their outputs are compared](figures/pipeline.png)](figures/pipeline.png)
+[![Matched inputs branch into a full-data Gaussian fit and independent training-fold refits, each with its own outputs](figures/pipeline.png)](figures/pipeline.png)
 
-The published site uses a responsive version of the Figma design. The README
-keeps the exported diagram. Open the [SVG](figures/pipeline.svg) for a scalable
-copy or see the [figure guide](figures/) to edit the source.
-Watch the [aperture and held-out prediction videos](media/) to see these steps
-on the existing synthetic example.
+[SVG diagram](figures/pipeline.svg) · [Figure source](figures/) · [Videos](media/)
 
 ## Prepare the inputs
 
@@ -47,7 +43,7 @@ training subset for held-out validation:
    `x0`, `y0`, and `sigma` enter this nonlinear search; amplitude and baseline
    are solved again at every trial geometry.
 4. Return the fitted parameters, in-sample R², convergence and boundary flags,
-   local standard errors, and the residual second-field diagnostic.
+   local geometry standard errors, and the residual second-field diagnostic.
 
 Candidate predictions and fold fitters are reused across response columns.
 `fit_all` and `validate_all` apply these steps to arrays shaped `(frames, units)`.
@@ -101,14 +97,12 @@ python scripts/generate_figures.py
 The first command recomputes deterministic measurements and checks the recorded
 tables without writing files or remeasuring historical timings. The second
 draws the 11 scientific plots and leaves the Figma diagram unchanged.
-Recorded tables, seeded response curves, and supplemental
-diagnostics have different roles; their descriptions are in the
-[figure index](figures/).
+The [figure index](figures/) identifies recorded results, seeded examples, and
+supplemental diagnostics.
 
 The implementation lives in
 [stimuli.py](https://github.com/urmeo/cortexprobe/blob/main/src/cortexprobe/stimuli.py),
 [model.py](https://github.com/urmeo/cortexprobe/blob/main/src/cortexprobe/prf/model.py),
 [fit.py](https://github.com/urmeo/cortexprobe/blob/main/src/cortexprobe/prf/fit.py), and
 [validation.py](https://github.com/urmeo/cortexprobe/blob/main/src/cortexprobe/prf/validation.py).
-See [Usage](usage.md) for runnable code. No network runner, human-data evaluation,
-or haemodynamic convolution is implemented in this pipeline.
+See [Usage](usage.md) for runnable code and operating limits.

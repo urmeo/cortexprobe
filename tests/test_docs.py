@@ -195,6 +195,12 @@ def test_broken_assets_anchors_and_paths_fail_the_build(docs_script, tmp_path, t
         docs_script.validate_links(tmp_path)
 
 
+def test_duplicate_page_ids_fail_the_build(docs_script, tmp_path):
+    (tmp_path / "index.html").write_text('<h1 id="intro">Title</h1><h2 id="intro">Section</h2>')
+    with pytest.raises(ValueError, match=r"index\.html: duplicate HTML ids.*intro"):
+        docs_script.validate_links(tmp_path)
+
+
 @pytest.mark.parametrize("missing", [None, "preview.png", "clip.mp4"])
 def test_raw_html_video_sources_and_posters_are_validated(docs_script, tmp_path, missing):
     media = tmp_path / "docs/media"

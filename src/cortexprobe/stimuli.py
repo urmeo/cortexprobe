@@ -33,12 +33,15 @@ def _prune_leaking_frames(stack: BoolArray, groups: np.ndarray, threshold: float
     similarity = frame_similarity(stack)
     violations = (similarity > threshold) & (groups[:, None] != groups[None, :])
     keep = np.ones(len(stack), dtype=bool)
-    while True:
-        active_violations = violations & keep[:, None] & keep[None, :]
-        violation_counts = active_violations.sum(axis=1)
-        if not violation_counts.any():
-            return np.flatnonzero(keep)
-        keep[int(np.argmax(violation_counts))] = False
+    violation_counts = violations.sum(axis=1)
+    while violation_counts.any():
+        removed = int(np.argmax(violation_counts))
+        keep[removed] = False
+        violation_counts -= violations[:, removed]
+        violations[removed, :] = False
+        violations[:, removed] = False
+        violation_counts[removed] = 0
+    return np.flatnonzero(keep)
 
 
 @dataclass(frozen=True)

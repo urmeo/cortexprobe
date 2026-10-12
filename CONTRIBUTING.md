@@ -17,6 +17,7 @@ python -m ruff check .
 python -m mypy
 python -m pytest --cov
 python scripts/generate_validation_report.py --check
+python scripts/build_docs.py
 ```
 
 Coverage must stay at or above 85%. The full test suite includes slow recovery
@@ -34,8 +35,9 @@ python scripts/generate_figures.py
 Use `python scripts/generate_validation_report.py --runtime` only when you
 intend to refresh hardware timings. When all deterministic measurements still
 reproduce, the report keeps its original values and provenance. The report
-check does not compare figure pixels or remeasure timings. See [Validation](docs/validation.md) for
-experiment conditions and comparison tolerances.
+check does not compare figure pixels or remeasure timings. See
+[Validation](docs/validation.md) for experiment conditions and comparison
+tolerances.
 
 Keep changes focused. Use short commit messages that name the update, such as
 `updated readme`, `updated results`, or `updated visuals`. Describe the behavior

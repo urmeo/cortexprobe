@@ -151,8 +151,8 @@ def test_gaussian_parameters_must_be_finite(parameter, value) -> None:
         GaussianReceptiveField(**parameters)
 
 
-@pytest.mark.parametrize("sigma", [1e-300, 1e300])
-def test_unrepresentable_gaussian_variance_is_rejected(sigma) -> None:
+@pytest.mark.parametrize("sigma", [1e-300, 1e-160, 1e300, 10**155])
+def test_unrepresentable_gaussian_normalization_is_rejected(sigma) -> None:
     with pytest.raises(ValueError, match="represented"):
         GaussianReceptiveField(0, 0, sigma)
 

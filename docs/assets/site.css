@@ -120,24 +120,6 @@ main.container {
   padding-block: clamp(2rem, 4vw, 4rem) 5rem;
 }
 
-.page-intro {
-  margin-bottom: 1.5rem;
-  color: var(--muted);
-  font-size: 0.95rem;
-}
-
-.page-intro p {
-  margin: 0.25rem 0;
-}
-
-.eyebrow {
-  color: var(--blue);
-  font-size: 0.8rem;
-  font-weight: 650;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
 .content h1,
 .content h2,
 .content h3 {

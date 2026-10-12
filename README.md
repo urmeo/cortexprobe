@@ -1,8 +1,10 @@
 # CortexProbe
 
-Fit 2D Gaussian population receptive fields to synthetic aperture responses
-with Python, NumPy, and SciPy. Matplotlib draws experiment plots and animations.
-**No neural network or human data has been tested.**
+Fit 2D Gaussian receptive fields from aperture masks and frame responses with
+Python, NumPy, and SciPy. Estimate center, width, amplitude, and baseline, then
+test predictions on held-out groups. Matplotlib draws the plots and animations.
+**The examples and recorded results use synthetic responses. No neural network
+or human data has been tested.**
 
 [Documentation](https://urmeo.github.io/cortexprobe/) · [Usage](docs/usage.md) · [Validation](docs/validation.md)
 
@@ -20,6 +22,35 @@ training groups only and keeps all five parameters fixed on the held-out group.
 [Pipeline details](docs/pipeline.md) · [Figma source](https://www.figma.com/design/SLnekFxRy403s5HqmehcOz?node-id=2-2) · [SVG](docs/figures/pipeline.svg)
 
 Click any figure to view it at full size.
+
+## Run
+
+Use Python 3.9 or later:
+
+```sh
+git clone https://github.com/urmeo/cortexprobe.git
+cd cortexprobe
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e .
+python examples/fit_synthetic.py
+```
+
+Expected output for the noiseless synthetic example:
+
+```text
+center=(12.0, 8.0), sigma=5.0, accepted=True
+held-out R²=1.000
+```
+
+[Usage](docs/usage.md) explains the inputs, coordinates, bounds, and Python API.
+To check the recorded measurements and redraw the plots:
+
+```sh
+python -m pip install -e '.[viz]'
+python scripts/generate_validation_report.py --check
+python scripts/generate_figures.py
+```
 
 ## Watch the workflow
 
@@ -39,13 +70,10 @@ stay fixed during held-out prediction.
 
 [Watch the video](https://urmeo.github.io/cortexprobe/docs/media/#held-out-prediction) · [MP4 file](docs/media/grouped-validation.mp4)
 
-These are illustrations of the existing synthetic example. See
-[video conditions and reproduction](docs/media/) for frame counts and details.
+See [video conditions and reproduction](docs/media/) for frame counts and
+instructions to regenerate the clips with FFmpeg.
 
 ## From aperture to response
-
-The fitter searches candidate centers and widths, then refines the Gaussian.
-It solves amplitude and baseline by linear least squares at each trial geometry.
 
 **Apertures.** Bar sweeps, rotating wedges, and expanding rings sample different
 parts of the field. Frames carry group labels for validation.
@@ -133,38 +161,10 @@ hardware-specific; the report check preserves them without remeasuring time.
 
 [![Recorded fitting time per unit and cross-validation overhead](docs/figures/runtime.png)](docs/figures/runtime.png)
 
-[Validation tables and conditions](docs/validation.md) include the numeric
-results, seeds, uncertainty assumptions, historical runtimes, and limits.
+[Validation tables and conditions](docs/validation.md) retain all numeric results,
+seeds, uncertainty assumptions, historical runtimes, and limits.
 [Figure details](docs/figures/) distinguish recorded results from seeded examples
 and supplemental diagnostics.
-
-## Run
-
-```sh
-git clone https://github.com/urmeo/cortexprobe.git
-cd cortexprobe
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install -e '.[viz]'
-python examples/fit_synthetic.py
-```
-
-Expected output for the noiseless synthetic example:
-
-```text
-center=(12.0, 8.0), sigma=5.0, accepted=True
-held-out R²=1.000
-```
-
-To check the recorded measurements and redraw the figures:
-
-```sh
-python scripts/generate_validation_report.py --check
-python scripts/generate_figures.py
-```
-
-[Usage](docs/usage.md) explains inputs, coordinates, bounds, and plot generation.
-The [video guide](docs/media/#reproduce) explains animation generation with FFmpeg.
 
 ## Files
 
@@ -172,12 +172,9 @@ The [video guide](docs/media/#reproduce) explains animation generation with FFmp
 |---|---|
 | `src/cortexprobe/` | Apertures, Gaussian fitting, grouped validation |
 | `examples/` | Runnable synthetic fitting example |
-| `configs/` | Recorded experiment configuration |
-| `results/` | Numeric record and measurement provenance |
-| `docs/` | Pipeline, usage, and validation conditions |
-| `docs/figures/` | Pipeline diagram, curves, and charts |
-| `docs/media/` | Animated previews, videos, and demonstration conditions |
-| `scripts/` | Report, figure, and video generation |
+| `configs/`, `results/` | Experiment settings, numeric record, and measurement provenance |
+| `docs/` | Guides, plots, videos, and site assets |
+| `scripts/` | Report, plot, video, and documentation generation |
 | `benchmarks/` | Measured runtime by unit count |
 | `tests/` | Fitting, configuration, stimulus, and reporting checks |
 | `.github/workflows/` | Python 3.9/3.12 verification and Pages publication |

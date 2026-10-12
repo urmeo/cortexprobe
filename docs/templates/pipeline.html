@@ -1,5 +1,5 @@
 <section class="pipeline-view" aria-labelledby="pipeline-title">
-  <header class="pipeline-header">
+  <header>
     <p class="pipeline-eyebrow">CORTEXPROBE / WORKFLOW</p>
     <h2 class="pipeline-title" id="pipeline-title">Estimate a field. Test held-out predictions.</h2>
     <p class="pipeline-subtitle">Synthetic aperture responses · Python · NumPy · SciPy</p>
@@ -52,7 +52,7 @@
       <h3 id="pipeline-validation-title">Training-fold refits</h3>
       <p class="pipeline-lead">Fit all other groups only.</p>
       <p class="pipeline-muted">Repeat for each usable fold.</p>
-      <div class="pipeline-folds" aria-label="Example fold: train on three groups and hold out one group">
+      <div class="pipeline-folds" role="group" aria-label="Example fold: train on three groups and hold out one group">
         <span class="pipeline-fold">train</span><span class="pipeline-fold">train</span><span class="pipeline-fold pipeline-fold-held">hold out</span><span class="pipeline-fold">train</span>
       </div>
     </section>

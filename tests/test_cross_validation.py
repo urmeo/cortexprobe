@@ -62,6 +62,33 @@ def test_folds_test_every_frame_exactly_once(sequence) -> None:
     assert np.array_equal(np.sort(np.concatenate(tests)), np.arange(sequence.n_frames))
 
 
+def test_splitter_retains_groups_after_caller_mutates_labels() -> None:
+    groups = np.array([0, 0, 1, 1])
+    splitter = LeaveOneGroupOut(groups)
+
+    groups[:] = 7
+    folds = list(splitter.splits())
+
+    assert len(folds) == 2
+    assert np.array_equal(folds[0][1], [0, 1])
+    assert np.array_equal(folds[1][1], [2, 3])
+
+
+def test_validation_uses_the_same_aperture_snapshot_for_training_and_scoring(
+    grid, apertures, sequence, fit_config
+) -> None:
+    original = apertures.copy()
+    response = synthesise(grid, original, TRUTH)
+    validator = CrossValidator(grid, original, sequence.group, fit_config)
+
+    original[:] = 0.0
+    result = validator.validate_unit(response)
+
+    assert result.fit.accepted
+    assert result.fit.r2 > 0.99
+    assert min(result.fold_r2) > 0.99
+
+
 def test_real_signal_generalises(validator, grid, apertures) -> None:
     result = validator.validate_unit(synthesise(grid, apertures, TRUTH, noise=0.3, seed=9))
 

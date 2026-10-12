@@ -69,11 +69,11 @@ def main(argv: list[str] | None = None) -> None:
             "for the benchmark's fixed sigma bounds (1, 10)"
         )
 
-    grid = Grid(arguments.resolution)
     config = StimulusConfig(
         resolution=arguments.resolution, n_steps=20, directions=(0, 45, 90, 135)
     )
     sequence = build_apertures(config, "bar")
+    grid = sequence.grid
     apertures = sequence.as_float()
     fit_config = FitConfig(grid_size=10, sigma_bounds=(1.0, SIGMA_HIGH))
 

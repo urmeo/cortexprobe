@@ -191,7 +191,7 @@ def _standard_errors(
 
 
 class PRFFitter:
-    """Fit Gaussian pRFs using candidate predictions cached for the aperture sequence."""
+    """Fit Gaussian pRFs using candidate predictions cached for an aperture snapshot."""
 
     def __init__(self, grid: Grid, apertures: FloatArray, config: FitConfig) -> None:
         if apertures.ndim != 3:
@@ -205,7 +205,7 @@ class PRFFitter:
         if not np.isfinite(apertures).all():
             raise ValueError("apertures must be finite; found NaN or inf")
         self.grid = grid
-        self.apertures = apertures.astype(np.float64, copy=False)
+        self.apertures = apertures.astype(np.float64, copy=True)
         self.config = config
         self._check_sigma_ceiling()
         self.n_independent_frames = _count_distinct_frames(self.apertures)
