@@ -81,7 +81,6 @@ def test_validation_preserves_tables_provenance_and_links(built_site):
     html = (built_site / "docs/validation.html").read_text()
     assert '<a href="../results/validation.json">' in html
     assert '<a href="../configs/validation.json">' in html
-    assert 'href="../CONTRIBUTING.html"' in html
     assert 'href="../assets/site.css"' in html
     assert "<table>" in html
     assert "0.935" in html

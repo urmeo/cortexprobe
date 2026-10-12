@@ -154,10 +154,10 @@ them without remeasuring runtime.
 
 ## Reproduce the report
 
-Install the development and plotting dependencies as described in
-[Contributing](../CONTRIBUTING.md). Then run:
+Install the development and plotting dependencies, then check the report:
 
 ```sh
+python -m pip install -e '.[dev,viz]'
 python scripts/generate_validation_report.py --check
 ```
 

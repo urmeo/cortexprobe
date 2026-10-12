@@ -93,8 +93,7 @@ are reproducible illustrations with stated seeds; they are separate from the
 recorded tables.
 
 For intentional measurement changes, see
-[the validation report](validation.md#reproduce-the-report). For the full test,
-formatting, and type checks, see [Contributing](../CONTRIBUTING.md).
+[the validation report](validation.md#reproduce-the-report).
 
 The [video guide](media/) contains animated demonstrations and instructions for
 regenerating them with FFmpeg.

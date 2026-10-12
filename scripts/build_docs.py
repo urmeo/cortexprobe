@@ -24,7 +24,6 @@ PAGES = {
     Path("docs/validation.md"): (Path("docs/validation.html"), "Validation"),
     Path("docs/figures/README.md"): (Path("docs/figures/index.html"), "Figures"),
     Path("docs/media/README.md"): (Path("docs/media/index.html"), "Videos"),
-    Path("CONTRIBUTING.md"): (Path("CONTRIBUTING.html"), "Contributing"),
     Path("SECURITY.md"): (Path("SECURITY.html"), "Security"),
 }
 
@@ -195,7 +194,6 @@ def render_page(source: Path) -> str:
     <div class="footer-inner">
       <a href="{REPOSITORY}">Repository</a>
       <a href="{REPOSITORY}/blob/main/{source.as_posix()}">Page source</a>
-      <a href="{relative_url(Path("CONTRIBUTING.html"), page)}">Contributing</a>
       <a href="{relative_url(Path("SECURITY.html"), page)}">Security</a>
       <a href="{relative_url(Path("LICENSE"), page)}">MIT license</a>
       <span>By urme</span>

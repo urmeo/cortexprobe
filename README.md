@@ -164,4 +164,4 @@ and supplemental diagnostics.
 | `benchmarks/` | Measured runtime by unit count |
 | `tests/` | Fitting, configuration, stimulus, and reporting checks |
 
-[Checks and updates](CONTRIBUTING.md) · [MIT license](LICENSE) · [Citation](CITATION.cff)
+[MIT license](LICENSE) · [Citation](CITATION.cff)
