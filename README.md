@@ -58,11 +58,6 @@ instructions to regenerate the clips with FFmpeg.
 
 ## From aperture to response
 
-**Apertures.** Bar sweeps, rotating wedges, and expanding rings sample different
-parts of the field. Frames carry group labels for validation.
-
-[![Bar, wedge, and ring aperture sequences with validation groups](docs/figures/stimuli.png)](docs/figures/stimuli.png)
-
 **Forward model.** More overlap between the Gaussian and the aperture produces
 a larger predicted response. Coordinates and width are in pixels.
 
