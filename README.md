@@ -163,6 +163,5 @@ and supplemental diagnostics.
 | `scripts/` | Report, plot, video, and documentation generation |
 | `benchmarks/` | Measured runtime by unit count |
 | `tests/` | Fitting, configuration, stimulus, and reporting checks |
-| `.github/workflows/` | Python 3.9/3.12 verification and Pages publication |
 
 [Checks and updates](CONTRIBUTING.md) · [MIT license](LICENSE) · [Citation](CITATION.cff)

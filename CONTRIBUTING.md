@@ -69,6 +69,4 @@ The overview and pipeline pages use `docs/templates/pipeline.html` and
 `docs/assets/pipeline.css`. Keep them aligned with the Figma source and the
 exported README diagram. The component's SVG assets live in `docs/assets/pipeline/`.
 
-GitHub Actions publishes the site on pushes to `main`. The publication workflow
-can also be run manually from `main`. Fitting and plotting do not require
-the documentation dependency.
+Fitting and plotting do not require the documentation dependency.
