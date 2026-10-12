@@ -132,16 +132,4 @@ seeds, uncertainty assumptions, historical runtimes, and limits.
 [Figure details](docs/figures/) distinguish recorded results from seeded examples
 and supplemental diagnostics.
 
-## Files
-
-| Folder | Contents |
-|---|---|
-| `src/cortexprobe/` | Apertures, Gaussian fitting, grouped validation |
-| `examples/` | Runnable synthetic fitting example |
-| `configs/`, `results/` | Experiment settings, numeric record, and measurement provenance |
-| `docs/` | Guides, plots, videos, and site assets |
-| `scripts/` | Report, plot, video, and documentation generation |
-| `benchmarks/` | Measured runtime by unit count |
-| `tests/` | Fitting, configuration, stimulus, and reporting checks |
-
-[MIT license](LICENSE) · [Citation](CITATION.cff)
+[MIT license](LICENSE)
