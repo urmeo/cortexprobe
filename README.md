@@ -70,23 +70,11 @@ and seed 7. It separates the full-data fit, held-out predictions, and residuals.
 
 ## Recovery and uncertainty
 
-The recovery experiment uses five known fields and one shared noise seed per
-condition. Noise is measured relative to the clean response's standard deviation.
-The largest observed error is specific to these five fits in one noise draw.
-
-The recorded setup uses a 64 × 64 pixel field, 80 bar frames, four groups,
-300 candidate fields, and sigma bounds of 1–10 pixels.
-
 | Noise | Mean position error (px) | Largest position error (px) | Mean sigma error |
 |---|---|---|---|
 | None | 0.000 | 0.000 | 0.0% |
 | 20% | 0.197 | 0.287 | 2.3% |
 | 50% | 0.511 | 0.772 | 5.6% |
-
-These are the five-field results with shared seed 7. A separate pure-noise check
-accepted 0 of 40 response columns at seed 11 with an in-sample R² threshold of 0.2.
-The [numeric record](results/validation.json) and
-[validation report](docs/validation.md#recovery) retain the full results and provenance.
 
 [![Position and sigma recovery across noise levels for five known fields](docs/figures/recovery.png)](docs/figures/recovery.png)
 
