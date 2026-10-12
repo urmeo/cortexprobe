@@ -1,0 +1,12 @@
+line-length = 100
+target-version = "py39"
+src = ["src", "tests"]
+
+[lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "SIM", "RUF", "ARG", "C4", "PT"]
+ignore = ["N803", "N806"]
+
+[lint.per-file-ignores]
+"tests/*" = ["ARG"]
+"src/cortexprobe/config.py" = ["UP007", "UP045"]
+"scripts/*" = ["RUF001"]
