@@ -1,4 +1,4 @@
-"""Render the committed Markdown, plots, and videos as a static documentation site."""
+"""Render the committed Markdown, figures, and videos as a static documentation site."""
 
 from __future__ import annotations
 
@@ -227,6 +227,7 @@ def build_site() -> None:
     shutil.copytree(ROOT / "docs/assets", OUTPUT / "assets")
     for directory, pattern in (
         ("docs/figures", "*.png"),
+        ("docs/figures", "*.svg"),
         ("docs/media", "*.gif"),
         ("docs/media", "*.mp4"),
         ("docs/media", "*.png"),
@@ -241,11 +242,11 @@ def build_site() -> None:
         shutil.copy2(ROOT / name, OUTPUT / name)
     (OUTPUT / ".nojekyll").touch()
     validate_links(OUTPUT)
-    plots = len(list((OUTPUT / "docs/figures").glob("*.png")))
+    figures = len(list((OUTPUT / "docs/figures").glob("*.png")))
     animations = len(list((OUTPUT / "docs/media").glob("*.gif")))
     videos = len(list((OUTPUT / "docs/media").glob("*.mp4")))
     print(
-        f"built {OUTPUT.name}: {len(PAGES)} pages, {plots} plots, "
+        f"built {OUTPUT.name}: {len(PAGES)} pages, {figures} figures, "
         f"{animations} GIFs, {videos} videos"
     )
 

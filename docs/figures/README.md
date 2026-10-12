@@ -1,8 +1,12 @@
 # Figures
 
-The figures are generated with Matplotlib from the committed configuration,
-recorded tables, and stated synthetic demonstrations. Run from the repository
-root:
+The pipeline diagram is exported from [Figma](https://www.figma.com/design/SLnekFxRy403s5HqmehcOz?node-id=2-2)
+as [PNG](pipeline.png) and [SVG](pipeline.svg). Edit the diagram in Figma, then
+replace both committed exports. The SVG can also be opened in a vector editor.
+
+The other 11 figures are scientific plots generated with Matplotlib from the
+committed configuration, recorded tables, and stated synthetic demonstrations.
+Run from the repository root:
 
 ```sh
 python scripts/generate_validation_report.py --check
@@ -11,7 +15,7 @@ python scripts/generate_figures.py
 
 | Figure | What it shows | Basis |
 |---|---|---|
-| [Pipeline](pipeline.png) | Shared inputs → full-data estimate and separate grouped refits → outputs | Implemented workflow |
+| [Pipeline](pipeline.png) | Shared inputs → full-data estimate and separate grouped refits → outputs | Implemented workflow; Figma export |
 | [Apertures](stimuli.png) | Bar, wedge, and ring masks with group labels | Configured stimulus designs |
 | [Gaussian overlap](model.png) | A field's overlap with the aperture produces a response | Forward-model illustration |
 | [Response curves](fitted-response.png) | Observations, full-data fit, held-out predictions, and residuals | Seeded demonstration |

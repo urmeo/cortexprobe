@@ -179,8 +179,9 @@ Use `python scripts/generate_validation_report.py --runtime` to refresh hardware
 timings explicitly. Review the numeric record, tables, and figures together.
 The figure script also writes supplemental diagnostic plots to
 [the figure gallery](figures/); those plots are not all part of the recorded tables.
-The pipeline and response curves show a separate seeded demonstration. The
-noise autocorrelation curves describe the existing validation noise generator.
+The response curves show a separate seeded demonstration. The pipeline diagram
+describes the implemented workflow. The noise autocorrelation curves describe
+the existing validation noise generator.
 These illustrations do not alter the recorded measurements or their provenance.
 
 ## References

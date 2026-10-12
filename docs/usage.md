@@ -77,7 +77,7 @@ requiring `sigma <= resolution / 6.1`. Edge fields can still lose mass.
 
 ## Draw the figures
 
-Matplotlib is optional for fitting and required for figures:
+Matplotlib is optional for fitting and required for the 11 scientific plots:
 
 ```sh
 python -m pip install -e '.[viz]'
@@ -86,9 +86,11 @@ python scripts/generate_figures.py
 ```
 
 The generator reads `configs/validation.json` and the committed numeric record
-in `results/validation.json`. It writes plots and the pipeline diagram to
-`docs/figures/`. The response and autocorrelation curves are reproducible
-illustrations with stated seeds; they are separate from the recorded tables.
+in `results/validation.json`. It writes the scientific plots to `docs/figures/`.
+The pipeline diagram is a committed Figma export; see the [figure guide](figures/)
+for its PNG, SVG, and editable source. The response and autocorrelation curves
+are reproducible illustrations with stated seeds; they are separate from the
+recorded tables.
 
 For intentional measurement changes, see
 [the validation report](validation.md#reproduce-the-report). For the full test,

@@ -31,6 +31,7 @@ def test_site_builds_every_page_and_copies_assets_unchanged(docs_script, built_s
         assert (built_site / destination).is_file()
     for directory, suffix in (
         ("docs/figures", ".png"),
+        ("docs/figures", ".svg"),
         ("docs/media", ".gif"),
         ("docs/media", ".mp4"),
         ("docs/media", ".png"),

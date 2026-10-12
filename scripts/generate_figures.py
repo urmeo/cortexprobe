@@ -1,9 +1,9 @@
-"""Regenerate project and validation figures in docs/figures/.
+"""Regenerate 11 scientific plots in docs/figures/.
 
-Coverage and timing panels use results/validation.json. The pipeline describes the workflow;
-other panels show synthetic model behavior and diagnostics. A matching configuration digest
-is required. Run the report's --check first to verify recorded numbers; it does not compare
-figure pixels.
+Coverage and timing panels use results/validation.json; other panels show synthetic model
+behavior and diagnostics. A matching configuration digest is required. Run the report's
+--check first to verify recorded numbers; it does not compare figure pixels.
+The committed pipeline diagram is exported from Figma and is not regenerated here.
 Needs the ``viz`` extra::
 
     python3 -m pip install -e '.[viz]'
@@ -23,7 +23,6 @@ matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib.patches import FancyArrowPatch, Rectangle
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -117,193 +116,6 @@ def synthetic_fit_example():
     )
     fit = PRFFitter(grid, apertures, CONFIG.fit).fit_unit(response)
     return grid, sequence, apertures, clean, response, fit
-
-
-def figure_pipeline() -> None:
-    """Separate full-data estimation from training-only validation refits."""
-    fig = plt.figure(figsize=(12, 8))
-    muted = "#59636e"
-    border = "#c9d4df"
-
-    def box(x, y, width, height, fill="white"):
-        fig.add_artist(
-            Rectangle(
-                (x, y),
-                width,
-                height,
-                transform=fig.transFigure,
-                facecolor=fill,
-                edgecolor=border,
-                linewidth=1.2,
-            )
-        )
-
-    def arrow(start, end):
-        fig.add_artist(
-            FancyArrowPatch(
-                start,
-                end,
-                transform=fig.transFigure,
-                arrowstyle="-|>",
-                mutation_scale=15,
-                color=muted,
-                linewidth=1.4,
-                shrinkA=0,
-                shrinkB=0,
-            )
-        )
-
-    fig.text(
-        0.5,
-        0.96,
-        "CortexProbe: from synthetic inputs to results",
-        ha="center",
-        va="center",
-        fontsize=23,
-        fontweight="bold",
-    )
-    fig.text(
-        0.5,
-        0.915,
-        "Estimate one field; evaluate predictions with separate fold refits.",
-        ha="center",
-        va="center",
-        fontsize=14,
-        color=muted,
-    )
-
-    box(0.06, 0.76, 0.88, 0.125, fill="#eef4f9")
-    fig.text(0.085, 0.859, "1  Prepare matched inputs", fontsize=16, fontweight="bold")
-    fig.text(
-        0.085,
-        0.832,
-        "Build bar, wedge or ring masks; group related frames; prune cross-group overlap.",
-        fontsize=13,
-    )
-    fig.text(
-        0.085,
-        0.805,
-        "Known Gaussian overlap × amplitude + baseline + optional noise → response.",
-        fontsize=13,
-    )
-    fig.text(
-        0.085,
-        0.778,
-        "Align retained masks, responses and group labels by frame.",
-        fontsize=12.5,
-        color=muted,
-    )
-    fig.add_artist(
-        plt.Line2D(
-            [0.27, 0.27, 0.73, 0.73],
-            [0.72, 0.742, 0.742, 0.72],
-            transform=fig.transFigure,
-            color=muted,
-            linewidth=1.4,
-        )
-    )
-    fig.add_artist(
-        plt.Line2D(
-            [0.5, 0.5],
-            [0.76, 0.742],
-            transform=fig.transFigure,
-            color=muted,
-            linewidth=1.4,
-        )
-    )
-    arrow((0.27, 0.72), (0.27, 0.705))
-    arrow((0.73, 0.72), (0.73, 0.705))
-
-    box(0.06, 0.36, 0.42, 0.345)
-    box(0.52, 0.36, 0.42, 0.345)
-    fig.text(0.085, 0.671, "2a  Fit on all frames", fontsize=16, fontweight="bold", color=ACCENT)
-    fig.text(0.085, 0.626, "Fit one model using all retained frames.", fontsize=13)
-    fig.text(0.085, 0.589, "Estimate center, width, amplitude and baseline.", fontsize=12.5)
-    fig.text(0.085, 0.537, "Accept the fit only when:", fontsize=13, fontweight="bold")
-    for y, criterion in zip(
-        (0.494, 0.461, 0.428, 0.395),
-        (
-            "Optimizer converged",
-            "In-sample R² ≥ configured threshold",
-            "Amplitude > 0",
-            "σ is away from both search bounds",
-        ),
-    ):
-        fig.text(0.1, y, criterion, fontsize=13)
-
-    fig.text(
-        0.545,
-        0.671,
-        "2b  Evaluate held-out groups",
-        fontsize=16,
-        fontweight="bold",
-        color=GOOD,
-    )
-    for y, instruction in zip(
-        (0.626, 0.589, 0.552, 0.515, 0.478),
-        (
-            "Hold out one group.",
-            "Refit using the other groups only.",
-            "Keep fitted parameters fixed.",
-            "Predict and score the held-out group.",
-            "Repeat for each usable fold.",
-        ),
-    ):
-        fig.text(0.545, y, instruction, fontsize=13)
-    fig.text(0.545, 0.418, "Report R² for each held-out group.", fontsize=12.5)
-    fig.text(0.545, 0.385, "Summarize finite scores with mean and SD.", fontsize=12.5)
-
-    box(0.18, 0.238, 0.64, 0.092, fill="#f4f6f8")
-    fig.text(
-        0.5,
-        0.307,
-        "Same fitting algorithm in both paths",
-        ha="center",
-        fontsize=13,
-        fontweight="bold",
-    )
-    fig.text(
-        0.5,
-        0.279,
-        "Coarse grid of center and width → bounded nonlinear refinement",
-        ha="center",
-        fontsize=12.5,
-    )
-    fig.text(
-        0.5,
-        0.251,
-        "At every geometry, solve amplitude + baseline by least squares.",
-        ha="center",
-        fontsize=12.5,
-    )
-    arrow((0.10, 0.36), (0.10, 0.19))
-    arrow((0.90, 0.36), (0.90, 0.19))
-
-    box(0.06, 0.07, 0.88, 0.12, fill="#eef4f9")
-    fig.text(0.085, 0.158, "3  Inspect results", fontsize=16, fontweight="bold")
-    fig.text(
-        0.085,
-        0.119,
-        "Parameters and acceptance · in-sample and held-out scores · tables and plots",
-        fontsize=13,
-    )
-    fig.text(
-        0.085,
-        0.086,
-        "Held-out scores, local errors and residual second-field gain do not gate acceptance.",
-        fontsize=12.5,
-        color=muted,
-    )
-    fig.text(
-        0.5,
-        0.025,
-        "Synthetic only: no neural-network responses or human data evaluated.",
-        ha="center",
-        fontsize=12,
-        color=muted,
-    )
-    fig.savefig(FIGURES / "pipeline.png", dpi=180)
-    plt.close(fig)
 
 
 def figure_fitted_response() -> None:
@@ -1098,7 +910,7 @@ def figure_runtime() -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Regenerate 12 figures in docs/figures/.")
+    parser = argparse.ArgumentParser(description="Regenerate 11 scientific plots in docs/figures/.")
     parser.parse_args(argv)
     try:
         load_recorded_report()
@@ -1107,7 +919,6 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     FIGURES.mkdir(parents=True, exist_ok=True)
     for draw in (
-        figure_pipeline,
         figure_fitted_response,
         figure_noise_autocorrelation,
         figure_stimulus,

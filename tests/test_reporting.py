@@ -214,7 +214,7 @@ def test_figures_help_and_invalid_flags_do_not_generate_files(
     with pytest.raises(SystemExit) as help_result:
         figures_script.main(["--help"])
     assert help_result.value.code == 0
-    assert "12 figures" in capsys.readouterr().out
+    assert "11 scientific plots" in capsys.readouterr().out
     with pytest.raises(SystemExit) as invalid_result:
         figures_script.main(["--unknown"])
     assert invalid_result.value.code == 2

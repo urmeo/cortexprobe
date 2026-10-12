@@ -6,6 +6,8 @@ full-data estimate and validation scores come from separate fits to shared input
 
 [![Inputs branch into full-data estimation and grouped training-fold refits before their outputs are compared](figures/pipeline.png)](figures/pipeline.png)
 
+The diagram is a committed Figma export. Open the [SVG](figures/pipeline.svg)
+for a scalable copy or see the [figure guide](figures/) to edit the source.
 Watch the [aperture and held-out prediction videos](media/) to see these steps
 on the existing synthetic example.
 
@@ -97,7 +99,8 @@ python scripts/generate_figures.py
 
 The first command recomputes deterministic measurements and checks the recorded
 tables without writing files or remeasuring historical timings. The second
-draws the figures. Recorded tables, seeded response curves, and supplemental
+draws the 11 scientific plots and leaves the Figma diagram unchanged.
+Recorded tables, seeded response curves, and supplemental
 diagnostics have different roles; their descriptions are in the
 [figure index](figures/).
 

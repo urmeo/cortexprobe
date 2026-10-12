@@ -1,22 +1,24 @@
 # CortexProbe
 
 Fit 2D Gaussian population receptive fields to synthetic aperture responses
-with Python, NumPy, and SciPy. Matplotlib draws the figures and animations.
+with Python, NumPy, and SciPy. Matplotlib draws experiment plots and animations.
 **No neural network or human data has been tested.**
 
 [Documentation](https://urmeo.github.io/cortexprobe/) · [Usage](docs/usage.md) · [Validation](docs/validation.md)
 
 ## Pipeline
 
-Apertures and synthetic responses feed two separate paths: a full-data estimate
-and held-out validation.
+Match aperture masks with responses, then estimate the field and test held-out
+groups with separate models.
 
-[![Apertures and synthetic responses branch into a full-data fit and separate training-fold refits, then combine their outputs for inspection](docs/figures/pipeline.png)](docs/figures/pipeline.png)
+[![Matched synthetic inputs branch into a full-data Gaussian fit and independent training-fold refits. Candidate search and bounded refinement solve amplitude and baseline at each geometry. Recorded synthetic checks appear below the workflow.](docs/figures/pipeline.png)](docs/figures/pipeline.png)
 
-Both paths use candidate search and bounded refinement. The full-data fit
-describes the field. Validation refits each training fold and keeps its parameters
-fixed while scoring the held-out group. [Pipeline details](docs/pipeline.md)
-explain the fitting steps, acceptance rules, uncertainty, and recorded checks.
+Both paths search candidate centers and widths, then refine the geometry.
+Amplitude and baseline are solved at each trial geometry. Validation fits the
+training groups only and keeps all five parameters fixed on the held-out group.
+
+[Pipeline details](docs/pipeline.md) · [Figma source](https://www.figma.com/design/SLnekFxRy403s5HqmehcOz?node-id=2-2) · [SVG](docs/figures/pipeline.svg)
+
 Click any figure to view it at full size.
 
 ## Watch the workflow
@@ -173,7 +175,7 @@ The [video guide](docs/media/#reproduce) explains animation generation with FFmp
 | `configs/` | Recorded experiment configuration |
 | `results/` | Numeric record and measurement provenance |
 | `docs/` | Pipeline, usage, and validation conditions |
-| `docs/figures/` | Generated pipeline diagram, curves, and charts |
+| `docs/figures/` | Pipeline diagram, curves, and charts |
 | `docs/media/` | Animated previews, videos, and demonstration conditions |
 | `scripts/` | Report, figure, and video generation |
 | `benchmarks/` | Measured runtime by unit count |
