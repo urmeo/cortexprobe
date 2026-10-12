@@ -132,4 +132,27 @@ seeds, uncertainty assumptions, historical runtimes, and limits.
 [Figure details](docs/figures/) distinguish recorded results from seeded examples
 and supplemental diagnostics.
 
-[MIT license](LICENSE)
+## References
+
+Branch, M. A., Coleman, T. F., & Li, Y. (1999). A subspace, interior, and conjugate
+gradient method for large-scale bound-constrained minimization problems.
+*SIAM Journal on Scientific Computing, 21*(1), 1–23.
+[https://doi.org/10.1137/S1064827595289108](https://doi.org/10.1137/S1064827595289108)
+
+Dumoulin, S. O., & Wandell, B. A. (2008). Population receptive field estimates in
+human visual cortex. *NeuroImage, 39*(2), 647–660.
+[https://doi.org/10.1016/j.neuroimage.2007.09.034](https://doi.org/10.1016/j.neuroimage.2007.09.034)
+
+Golub, G. H., & Pereyra, V. (1973). The differentiation of pseudo-inverses and
+nonlinear least squares problems whose variables separate.
+*SIAM Journal on Numerical Analysis, 10*(2), 413–432.
+[https://doi.org/10.1137/0710036](https://doi.org/10.1137/0710036)
+
+Kriegeskorte, N., Simmons, W. K., Bellgowan, P. S. F., & Baker, C. I. (2009).
+Circular analysis in systems neuroscience: The dangers of double dipping.
+*Nature Neuroscience, 12*(5), 535–540.
+[https://doi.org/10.1038/nn.2303](https://doi.org/10.1038/nn.2303)
+
+## License
+
+[MIT](LICENSE)
