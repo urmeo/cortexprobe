@@ -266,8 +266,7 @@ def build_site() -> None:
         target.mkdir(parents=True, exist_ok=True)
         for source in (ROOT / directory).glob(pattern):
             shutil.copy2(source, target / source.name)
-    for name in ("LICENSE", "CITATION.cff"):
-        shutil.copy2(ROOT / name, OUTPUT / name)
+    shutil.copy2(ROOT / "LICENSE", OUTPUT / "LICENSE")
     (OUTPUT / ".nojekyll").touch()
     validate_links(OUTPUT)
     figures = len(list((OUTPUT / "docs/figures").glob("*.png")))
