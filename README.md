@@ -11,15 +11,18 @@ neural-network evaluation.**
 
 ## Run
 
-Use Python 3.9 or later:
+Use Python 3.9 or later. Run the example, check the recorded measurements, and
+draw the plots:
 
-```sh
+```bash
 git clone https://github.com/urmeo/cortexprobe.git
 cd cortexprobe
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install -e .
+python -m pip install -e '.[viz]'
 python examples/fit_synthetic.py
+python scripts/generate_validation_report.py --check
+python scripts/generate_figures.py
 ```
 
 Expected output for the noiseless synthetic example:
@@ -29,14 +32,8 @@ center=(12.0, 8.0), sigma=5.0, accepted=True
 held-out R²=1.000
 ```
 
-[Usage](docs/usage.md) explains the inputs, coordinates, bounds, and Python API.
-To check the recorded measurements and redraw the plots:
-
-```sh
-python -m pip install -e '.[viz]'
-python scripts/generate_validation_report.py --check
-python scripts/generate_figures.py
-```
+Plots are saved in `docs/figures/`. [Usage](docs/usage.md) explains the inputs,
+coordinates, bounds, and Python API.
 
 ## Watch the workflow
 
