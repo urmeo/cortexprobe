@@ -6,7 +6,10 @@ full-data estimate and validation scores come from separate fits to shared input
 
 [![Matched inputs branch into a full-data Gaussian fit and independent training-fold refits, each with its own outputs](figures/pipeline.png)](figures/pipeline.png)
 
-[SVG diagram](figures/pipeline.svg) · [Figure source](figures/) · [Videos](media/)
+[Editable SVG](figures/pipeline.svg) · [Figure guide](figures/) · [Videos](media/)
+
+The SVG is the diagram source, with a PNG preview for the README and a responsive
+HTML counterpart in the documentation.
 
 ## Prepare the inputs
 
@@ -96,7 +99,7 @@ python scripts/generate_figures.py
 
 The first command recomputes deterministic measurements and checks the recorded
 tables without writing files or remeasuring historical timings. The second
-draws the 11 scientific plots and leaves the Figma diagram unchanged.
+draws the 11 scientific plots and preserves the pipeline SVG and PNG preview.
 The [figure index](figures/) identifies recorded results, seeded examples, and
 supplemental diagnostics.
 

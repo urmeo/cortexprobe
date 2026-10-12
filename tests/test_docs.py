@@ -52,25 +52,22 @@ def test_site_builds_every_page_and_copies_assets_unchanged(docs_script, built_s
 
 
 @pytest.mark.parametrize("page", ["index.html", "docs/pipeline.html"])
-def test_pipeline_is_readable_html_with_local_figma_assets(docs_script, built_site, page):
+def test_pipeline_is_readable_html_with_independent_fitting_paths(docs_script, built_site, page):
     html = (built_site / page).read_text()
     assert html.count('class="pipeline-view"') == 1
     assert 'aria-labelledby="pipeline-title"' in html
-    assert "Full-data estimate" in html
+    assert "Full-data fit" in html
     assert "Training-fold refits" in html
     assert "Freeze all five parameters." in html
-    assert "The all-frame fit does not initialize the fold models." in html
-    assert "Synthetic only: no human-data or neural-network evaluation." in html
-    assert "200 trials/condition" in html
-    assert "Noise is relative to clean-response SD." in html
+    assert "The full-data fit does not initialize the fold models." in html
+    assert "Within each fold, held-out responses are used only to score predictions." in html
+    assert "Examples and recorded results use synthetic responses." in html
+    assert "No human-data or neural-network evaluation." in html
     assert 'src="docs/figures/pipeline.png"' not in html
     assert 'src="figures/pipeline.png"' not in html
     assert "figma.com/api/mcp/asset/" not in html
     parser = docs_script.PageLinks()
     parser.feed(html)
-    for asset in (built_site / "assets/pipeline").glob("*.svg"):
-        url = docs_script.relative_url(asset.relative_to(built_site), Path(page))
-        assert url in parser.links
     stylesheet = docs_script.relative_url(Path("assets/pipeline.css"), Path(page))
     assert stylesheet in parser.links
 

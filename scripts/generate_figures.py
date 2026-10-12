@@ -3,7 +3,7 @@
 Coverage and timing panels use results/validation.json; other panels show synthetic model
 behavior and diagnostics. A matching configuration digest is required. Run the report's
 --check first to verify recorded numbers; it does not compare figure pixels.
-The committed pipeline diagram is exported from Figma and is not regenerated here.
+The editable pipeline SVG and PNG preview are maintained separately and preserved here.
 Needs the ``viz`` extra::
 
     python3 -m pip install -e '.[viz]'

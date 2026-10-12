@@ -6,22 +6,9 @@ test predictions on held-out groups. Matplotlib draws the plots and animations.
 **The examples and recorded results use synthetic responses. No neural network
 or human data has been tested.**
 
-[Documentation](https://urmeo.github.io/cortexprobe/) · [Usage](docs/usage.md) · [Validation](docs/validation.md)
+[![Matched aperture masks, frame responses, and group labels branch into a full-data field estimate and independent training-fold refits. Fold models keep all five parameters fixed when predicting excluded frames. Each fit searches candidate centers and widths, refines the geometry within bounds, and solves amplitude and baseline at every geometry. Acceptance uses in-sample checks; held-out responses are used only for scoring.](docs/figures/pipeline.png)](docs/figures/pipeline.png)
 
-## Pipeline
-
-Match aperture masks with responses, then estimate the field and test held-out
-groups with separate models.
-
-[![Matched synthetic inputs branch into a full-data Gaussian fit and independent training-fold refits. Candidate search and bounded refinement solve amplitude and baseline at each geometry. Recorded synthetic checks appear below the workflow.](docs/figures/pipeline.png)](docs/figures/pipeline.png)
-
-Both paths search candidate centers and widths, then refine the geometry.
-Amplitude and baseline are solved at each trial geometry. Validation fits the
-training groups only and keeps all five parameters fixed on the held-out group.
-
-[Pipeline details](docs/pipeline.md) · [Figma source](https://www.figma.com/design/SLnekFxRy403s5HqmehcOz?node-id=2-2) · [SVG](docs/figures/pipeline.svg)
-
-Click any figure to view it at full size.
+[Pipeline details](docs/pipeline.md) · [Editable SVG](docs/figures/pipeline.svg) · [Documentation](https://urmeo.github.io/cortexprobe/)
 
 ## Run
 

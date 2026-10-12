@@ -87,8 +87,8 @@ python scripts/generate_figures.py
 
 The generator reads `configs/validation.json` and the committed numeric record
 in `results/validation.json`. It writes the scientific plots to `docs/figures/`.
-The pipeline diagram is a committed Figma export; see the [figure guide](figures/)
-for its PNG, SVG, and editable source. The response and autocorrelation curves
+The pipeline has an editable SVG and a PNG preview; see the [figure guide](figures/).
+The response and autocorrelation curves
 are reproducible illustrations with stated seeds; they are separate from the
 recorded tables.
 

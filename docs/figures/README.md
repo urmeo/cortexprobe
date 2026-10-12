@@ -1,8 +1,8 @@
 # Figures
 
-The pipeline diagram is exported from [Figma](https://www.figma.com/design/SLnekFxRy403s5HqmehcOz?node-id=2-2)
-as [PNG](pipeline.png) and [SVG](pipeline.svg). Edit the diagram in Figma, then
-replace both committed exports. The SVG can also be opened in a vector editor.
+The pipeline has an editable [SVG source](pipeline.svg) and a [PNG preview](pipeline.png).
+The documentation shows the same workflow as responsive HTML. Keep the SVG,
+PNG preview, and HTML counterpart in sync when changing the diagram.
 
 The other 11 figures are scientific plots generated with Matplotlib from the
 committed configuration, recorded tables, and stated synthetic demonstrations.
@@ -13,9 +13,11 @@ python scripts/generate_validation_report.py --check
 python scripts/generate_figures.py
 ```
 
+These commands leave the pipeline diagram unchanged.
+
 | Figure | What it shows | Basis |
 |---|---|---|
-| [Pipeline](pipeline.png) | Shared inputs → full-data estimate and separate grouped refits → outputs | Implemented workflow; Figma export |
+| [Pipeline](pipeline.png) | Shared inputs → full-data fit and separate grouped refits → outputs | Implemented workflow; editable SVG with a PNG preview |
 | [Apertures](stimuli.png) | Bar, wedge, and ring masks with group labels | Configured stimulus designs |
 | [Gaussian overlap](model.png) | A field's overlap with the aperture produces a response | Forward-model illustration |
 | [Response curves](fitted-response.png) | Observations, full-data fit, held-out predictions, and residuals | Seeded demonstration |
