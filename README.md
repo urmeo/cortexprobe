@@ -1,12 +1,11 @@
 # CortexProbe
 
-Fit 2D Gaussian receptive fields from aperture masks and frame responses with
-Python, NumPy, and SciPy. Estimate center, width, amplitude, and baseline, then
-test predictions on held-out groups. Matplotlib draws the plots and animations.
-**The examples and recorded results use synthetic responses. No neural network
-or human data has been tested.**
+Fit 2D Gaussian receptive fields from aperture masks and frame responses.
+Estimate the field and test predictions on held-out groups with Python, NumPy,
+and SciPy. **Examples and recorded results are synthetic. No human-data or
+neural-network evaluation.**
 
-[![Matched aperture masks, frame responses, and group labels branch into a full-data field estimate and independent training-fold refits. Fold models keep all five parameters fixed when predicting excluded frames. Each fit searches candidate centers and widths, refines the geometry within bounds, and solves amplitude and baseline at every geometry. Acceptance uses in-sample checks; held-out responses are used only for scoring.](docs/figures/pipeline.png)](docs/figures/pipeline.png)
+[![Build and prune apertures, create synthetic responses, and align frames. The matched data branch into a full-data candidate search and bounded refinement, and independent training-fold fits. Each fold excludes one group, freezes five fitted parameters, predicts excluded masks, and scores against excluded responses. Amplitude and baseline are solved at every geometry. Held-out responses enter scoring only.](docs/figures/pipeline.png)](docs/figures/pipeline.png)
 
 [Pipeline details](docs/pipeline.md) · [Editable SVG](docs/figures/pipeline.svg) · [Documentation](https://urmeo.github.io/cortexprobe/)
 

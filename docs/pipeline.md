@@ -4,12 +4,13 @@ CortexProbe fits a Gaussian receptive field and checks its predictions on held-o
 groups. The examples and recorded experiments use synthetic responses. The
 full-data estimate and validation scores come from separate fits to shared inputs.
 
-[![Matched inputs branch into a full-data Gaussian fit and independent training-fold refits, each with its own outputs](figures/pipeline.png)](figures/pipeline.png)
+[![Prepare aligned synthetic inputs, fit a field on all frames, and test separate training-fold models using held-out masks for prediction and held-out responses for scoring](figures/pipeline.png)](figures/pipeline.png)
 
 [Editable SVG](figures/pipeline.svg) · [Figure guide](figures/) · [Videos](media/)
 
-The SVG is the diagram source, with a PNG preview for the README and a responsive
-HTML counterpart in the documentation.
+One diagram connects input preparation, full-data fitting, and grouped
+validation. The editable SVG is its source, with a PNG preview for the README
+and a responsive HTML counterpart in the documentation.
 
 ## Prepare the inputs
 
@@ -19,7 +20,8 @@ frames whose cross-group cosine similarity exceeds the configured threshold.
 This checks aperture overlap; other forms of dependence may remain.
 
 For a synthetic response, sum a known Gaussian's weights inside each aperture,
-apply amplitude and baseline, then optionally add seeded noise. The recorded
+apply amplitude and baseline, then optionally add seeded noise. Generate these
+responses from the retained masks so their frames remain aligned. The recorded
 experiments also use noise-only responses as a negative control.
 
 | Input | Meaning |
@@ -62,6 +64,10 @@ For each validation fold, hold out one complete group, fit the remaining groups,
 then predict the held-out frames. Geometry, amplitude, and baseline stay fixed
 during this prediction. The full-data estimate supplies no parameters to the
 fold models.
+
+Within each fold, held-out masks enter prediction and held-out responses enter
+scoring. Both bypass the training fit. Repeat the split, fit, prediction, and
+scoring steps for each usable group.
 
 The reported `cv_r2` is the mean of finite fold R² scores. It is not a single R²
 computed over pooled predictions. Folds with at most five training frames are

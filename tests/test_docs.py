@@ -56,9 +56,14 @@ def test_pipeline_is_readable_html_with_independent_fitting_paths(docs_script, b
     html = (built_site / page).read_text()
     assert html.count('class="pipeline-view"') == 1
     assert 'aria-labelledby="pipeline-title"' in html
-    assert "Full-data fit" in html
-    assert "Training-fold refits" in html
+    assert "Build apertures" in html
+    assert "Create responses" in html
+    assert "Align inputs" in html
+    assert "ESTIMATE THE FIELD · ALL RETAINED FRAMES" in html
+    assert "Fit training groups" in html
     assert "Freeze all five parameters." in html
+    assert "Held-out masks → prediction" in html
+    assert "Held-out responses → scoring" in html
     assert "The full-data fit does not initialize the fold models." in html
     assert "Within each fold, held-out responses are used only to score predictions." in html
     assert "Examples and recorded results use synthetic responses." in html
