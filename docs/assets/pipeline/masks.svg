@@ -1,0 +1,19 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="256" height="64" viewBox="0 0 256 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Schematic mask designs">
+<path id="Vector" d="M32 63C49.1208 63 63 49.1208 63 32C63 14.8792 49.1208 1 32 1C14.8792 1 1 14.8792 1 32C1 49.1208 14.8792 63 32 63Z" fill="#E4EDF4"/>
+<g id="Clip path group">
+<mask id="mask0_0_8" style="mask-type:luminance" maskUnits="userSpaceOnUse" x="1" y="1" width="62" height="62">
+<g id="bar">
+<path id="Vector_2" d="M32 63C49.1208 63 63 49.1208 63 32C63 14.8792 49.1208 1 32 1C14.8792 1 1 14.8792 1 32C1 49.1208 14.8792 63 32 63Z" fill="white"/>
+</g>
+</mask>
+<g mask="url(#mask0_0_8)">
+<path id="Vector_3" d="M0 26H64V38H0V26Z" fill="#1D5C8A"/>
+</g>
+</g>
+<path id="Vector_4" d="M128 63C145.121 63 159 49.1208 159 32C159 14.8792 145.121 1 128 1C110.879 1 97 14.8792 97 32C97 49.1208 110.879 63 128 63Z" fill="#E4EDF4"/>
+<path id="Vector_5" d="M128 32V1C136.222 1.00016 144.106 4.26633 149.92 10.08L128 32Z" fill="#1D5C8A"/>
+<path id="Vector_6" d="M224 63C241.121 63 255 49.1208 255 32C255 14.8792 241.121 1 224 1C206.879 1 193 14.8792 193 32C193 49.1208 206.879 63 224 63Z" fill="#E4EDF4"/>
+<path id="Vector_7" d="M224 52C235.046 52 244 43.0457 244 32C244 20.9543 235.046 12 224 12C212.954 12 204 20.9543 204 32C204 43.0457 212.954 52 224 52Z" stroke="#1D5C8A" stroke-width="8"/>
+</g>
+</svg>

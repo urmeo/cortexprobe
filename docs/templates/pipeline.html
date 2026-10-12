@@ -1,0 +1,106 @@
+<section class="pipeline-view" aria-labelledby="pipeline-title">
+  <header class="pipeline-header">
+    <p class="pipeline-eyebrow">CORTEXPROBE / WORKFLOW</p>
+    <h2 class="pipeline-title" id="pipeline-title">Estimate a field. Test held-out predictions.</h2>
+    <p class="pipeline-subtitle">Synthetic aperture responses · Python · NumPy · SciPy</p>
+  </header>
+
+  <div class="pipeline-flow">
+    <p class="pipeline-stage pipeline-stage-input">01 Prepare matched inputs</p>
+
+    <section class="pipeline-card pipeline-input" aria-labelledby="pipeline-input-title">
+      <h3 id="pipeline-input-title">Apertures + responses</h3>
+      <p class="pipeline-muted">One value per retained frame</p>
+      <div class="pipeline-apertures">
+        <img src="masks.svg" alt="Example aperture masks" width="256" height="64" />
+        <div class="pipeline-mask-labels"><span>bar</span><span>wedge</span><span>ring</span></div>
+      </div>
+      <div class="pipeline-response">
+        <p><strong>Known Gaussian overlap</strong></p>
+        <p class="pipeline-muted">× amplitude + baseline<br />+ optional seeded noise</p>
+      </div>
+      <section class="pipeline-preparation" aria-labelledby="pipeline-preparation-title">
+        <h4 id="pipeline-preparation-title">Align frames + groups</h4>
+        <p class="pipeline-muted">Group return sweeps.<br />Prune high cross-group overlap.</p>
+      </section>
+    </section>
+
+    <div class="pipeline-fork" aria-hidden="true">
+      <span class="pipeline-fork-stem"></span>
+      <span class="pipeline-fork-trunk"></span>
+      <span class="pipeline-fork-branch pipeline-fork-top"><img src="arrow-input.svg" alt="" width="10" height="12" /></span>
+      <span class="pipeline-fork-branch pipeline-fork-bottom"><img src="arrow-input.svg" alt="" width="10" height="12" /></span>
+    </div>
+
+    <p class="pipeline-stage pipeline-stage-fit">02 Fit separate models</p>
+    <section class="pipeline-card pipeline-estimate" aria-labelledby="pipeline-estimate-title">
+      <h3 id="pipeline-estimate-title">Full-data estimate</h3>
+      <p class="pipeline-lead">Fit all retained frames.</p>
+      <p class="pipeline-muted">One model describes the field.<br />Acceptance uses in-sample checks.</p>
+    </section>
+    <div class="pipeline-arrow pipeline-arrow-estimate" aria-hidden="true"><span></span><img src="arrow-estimate.svg" alt="" width="10" height="12" /></div>
+    <p class="pipeline-stage pipeline-stage-output">03 Inspect each output</p>
+    <section class="pipeline-card pipeline-parameters" aria-labelledby="pipeline-parameters-title">
+      <h3 id="pipeline-parameters-title">Field parameters</h3>
+      <p class="pipeline-parameter-list">Center (x0, y0) · width<br />amplitude · baseline</p>
+      <p class="pipeline-muted pipeline-output-note">In-sample R² + diagnostics</p>
+    </section>
+
+    <p class="pipeline-independent">The all-frame fit does not initialize the fold models.</p>
+
+    <section class="pipeline-card pipeline-validation" aria-labelledby="pipeline-validation-title">
+      <h3 id="pipeline-validation-title">Training-fold refits</h3>
+      <p class="pipeline-lead">Fit all other groups only.</p>
+      <p class="pipeline-muted">Repeat for each usable fold.</p>
+      <div class="pipeline-folds" aria-label="Example fold: train on three groups and hold out one group">
+        <span class="pipeline-fold">train</span><span class="pipeline-fold">train</span><span class="pipeline-fold pipeline-fold-held">hold out</span><span class="pipeline-fold">train</span>
+      </div>
+    </section>
+    <div class="pipeline-arrow pipeline-arrow-validation" aria-hidden="true"><span></span><img src="arrow-validation.svg" alt="" width="10" height="12" /></div>
+    <section class="pipeline-card pipeline-predictions" aria-labelledby="pipeline-predictions-title">
+      <h3 id="pipeline-predictions-title">Held-out predictions</h3>
+      <p>Freeze all five parameters.</p>
+      <p>Predict excluded frames.</p>
+      <p class="pipeline-muted pipeline-output-note">Fold R²: finite-score mean<br />and sample SD</p>
+    </section>
+
+    <div class="pipeline-fitting">
+      <p class="pipeline-shared">Same fitting algorithm · run independently in both paths</p>
+      <section class="pipeline-mechanism" aria-label="Fitting algorithm used independently for each model">
+        <div class="pipeline-grid-search">
+          <h3>Candidate grid</h3>
+          <p>Search center + width</p>
+        </div>
+        <div class="pipeline-arrow pipeline-arrow-mechanism" aria-hidden="true"><span></span><img src="arrow-mechanism.svg" alt="" width="10" height="12" /></div>
+        <div class="pipeline-refinement">
+          <h3>Bounded geometry refinement</h3>
+          <p>Refine x0, y0, σ with SciPy</p>
+        </div>
+        <p class="pipeline-linear-solve">At each geometry: solve amplitude + baseline by linear least squares.</p>
+      </section>
+    </div>
+  </div>
+
+  <section class="pipeline-evidence" aria-labelledby="pipeline-evidence-title">
+    <h3 class="pipeline-eyebrow" id="pipeline-evidence-title">RECORDED SYNTHETIC CHECKS</h3>
+    <dl class="pipeline-results">
+      <div class="pipeline-result">
+        <dt>Mean position error</dt>
+        <dd class="pipeline-metric">0.197 px</dd>
+        <dd class="pipeline-condition">20% noise · five known fields<br />Shared seed 7</dd>
+      </div>
+      <div class="pipeline-result">
+        <dt>Noise-only fits accepted</dt>
+        <dd class="pipeline-metric">0 / 40</dd>
+        <dd class="pipeline-condition">Seed 11 · in-sample R² threshold 0.2</dd>
+      </div>
+      <div class="pipeline-result">
+        <dt>Empirical x0 interval coverage</dt>
+        <dd class="pipeline-metric">91.5–93.5%</dd>
+        <dd class="pipeline-condition">Nominal 95% · 200 trials/condition<br />Four conditions · paired seeds</dd>
+      </div>
+    </dl>
+    <p class="pipeline-conditions">Recorded bar setup: 64 × 64 px · 80 frames · 4 groups · 300 candidates · σ bounds 1–10 px.</p>
+    <p class="pipeline-conditions">Synthetic only: no human-data or neural-network evaluation. Noise is relative to clean-response SD.</p>
+  </section>
+</section>

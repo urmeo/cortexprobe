@@ -6,8 +6,9 @@ full-data estimate and validation scores come from separate fits to shared input
 
 [![Inputs branch into full-data estimation and grouped training-fold refits before their outputs are compared](figures/pipeline.png)](figures/pipeline.png)
 
-The diagram is a committed Figma export. Open the [SVG](figures/pipeline.svg)
-for a scalable copy or see the [figure guide](figures/) to edit the source.
+The published site uses a responsive version of the Figma design. The README
+keeps the exported diagram. Open the [SVG](figures/pipeline.svg) for a scalable
+copy or see the [figure guide](figures/) to edit the source.
 Watch the [aperture and held-out prediction videos](media/) to see these steps
 on the existing synthetic example.
 

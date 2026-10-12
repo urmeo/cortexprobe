@@ -88,6 +88,25 @@ class SiteContent(Treeprocessor):
             ET.SubElement(caption, "strong").text = label
             caption[-1].tail = f". {description}. {basis}."
 
+    def add_pipeline(self, root: ET.Element) -> None:
+        """Replace the pipeline diagram with its responsive HTML counterpart."""
+        if self.source not in (Path("README.md"), Path("docs/pipeline.md")):
+            return
+        for index, paragraph in enumerate(root):
+            image = paragraph.find(".//img")
+            if image is None:
+                continue
+            if image.get("src") != relative_url(Path("docs/figures/pipeline.png"), self.page):
+                continue
+            pipeline = ET.parse(ROOT / "docs/templates/pipeline.html").getroot()
+            for asset in pipeline.iter("img"):
+                asset.set(
+                    "src", relative_url(Path("assets/pipeline") / asset.attrib["src"], self.page)
+                )
+            root.remove(paragraph)
+            root.insert(index, pipeline)
+            return
+
     def run(self, root: ET.Element) -> None:
         if self.source == Path("docs/figures/README.md"):
             self.add_gallery(root)
@@ -124,6 +143,7 @@ class SiteContent(Treeprocessor):
                     parent.remove(child)
                     parent.insert(index, wrapper)
                     wrapper.append(child)
+        self.add_pipeline(root)
 
 
 def render_page(source: Path) -> str:
@@ -135,6 +155,11 @@ def render_page(source: Path) -> str:
     renderer.treeprocessors.register(SiteContent(source), "site_content", 5)
     content = renderer.convert((ROOT / source).read_text(encoding="utf-8"))
     content = content.replace("<pre>", '<pre tabindex="0">')
+    pipeline_styles = (
+        f'<link rel="stylesheet" href="{relative_url(Path("assets/pipeline.css"), page)}">'
+        if 'class="pipeline-view"' in content
+        else ""
+    )
     navigation = []
     for destination, text in list(PAGES.values())[:5]:
         current = ' aria-current="page"' if destination == page else ""
@@ -153,6 +178,7 @@ def render_page(source: Path) -> str:
   <meta name="description" content="Fit synthetic receptive fields with Python, NumPy, and SciPy.">
   <title>{escape(label)} · CortexProbe</title>
   <link rel="stylesheet" href="{relative_url(Path("assets/site.css"), page)}">
+  {pipeline_styles}
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
