@@ -1,130 +1,113 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="1160" viewBox="0 0 1280 1160" role="img" aria-labelledby="title description">
-  <title id="title">CortexProbe pipeline: matched frames to field estimates and held-out scores</title>
-  <desc id="description">Build and prune aperture masks, create aligned synthetic responses, and validate inputs. Matched data branch into independent full-data estimation and grouped validation. The full-data path searches candidate centers and widths, refines geometry within bounds, and reports field parameters and in-sample checks. Each validation fold excludes one complete group, independently fits the remaining groups, freezes all five parameters, predicts the excluded masks, and scores against excluded responses. Both fitting paths solve amplitude and baseline at every geometry. Excluded masks bypass training to enter prediction; excluded responses bypass training and prediction to enter scoring only.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="1180" viewBox="0 0 1280 1180" role="img" aria-labelledby="title description">
+  <title id="title">CortexProbe pipeline: prepare frames, fit a field, and test predictions</title>
+  <desc id="description">Matched aperture masks, synthetic responses, and groups feed two independent paths. Fit all retained frames for the field estimate. Separately, hold out each usable group, fit the other groups, freeze all five parameters, predict with held-out masks, and score against held-out responses. Solve amplitude and baseline at every candidate and trial geometry. Report the mean and sample SD of finite fold R squared scores. The all-frame fit does not initialize validation fits. Held-out scores do not determine acceptance. Examples and recorded results are synthetic.</desc>
   <defs>
     <style>
-      text { font-family: Arial, Helvetica, sans-serif; fill: #e7eded; }
-      .title { font-size: 32px; font-weight: 700; }
-      .heading { font-size: 24px; font-weight: 700; }
-      .compact-heading { font-size: 22px; font-weight: 700; }
-      .body { font-size: 20px; }
-      .small { font-size: 18.5px; }
-      .label { font-size: 20px; font-weight: 700; }
-      .muted { fill: #a8b5bd; }
-      .cyan { fill: #55c4e0; }
-      .excluded { fill: #f08b79; }
-      .card { fill: #1b2327; stroke: #cad4d9; stroke-width: 2; }
-      .fit { stroke: #55c4e0; }
-      .flow { fill: none; stroke: #55c4e0; stroke-width: 2; stroke-linejoin: round; }
-      .bypass { fill: none; stroke: #f08b79; stroke-width: 2; stroke-linejoin: round; }
-    </style>
+    text { font-family: Arial, Helvetica, sans-serif; fill: #e7edef; }
+    .title { font-size: 32px; font-weight: 700; }
+    .heading { font-size: 26px; font-weight: 700; }
+    .step { font-size: 23px; font-weight: 700; }
+    .body { font-size: 21px; }
+    .note { font-size: 20px; }
+    .muted { fill: #a8b5bd; }
+    .cyan { fill: #55c4e0; }
+    .held-out { fill: #f08b79; }
+    .panel { fill: #1b2327; stroke: #34424a; stroke-width: 1.5; }
+    .card { fill: #1b2327; stroke: #60757f; stroke-width: 1.5; }
+    .result { stroke: #55c4e0; }
+    .flow { fill: none; stroke: #55c4e0; stroke-width: 2; stroke-linejoin: round; }
+  </style>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M0 0 10 5 0 10Z" fill="#55c4e0" />
     </marker>
-    <marker id="excluded-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M0 0 10 5 0 10Z" fill="#f08b79" />
-    </marker>
   </defs>
-
-  <rect width="1280" height="1160" fill="#14191c" />
-  <text x="48" y="66" class="title">CORTEXPROBE PIPELINE</text>
-  <text x="48" y="102" class="body muted">Aperture masks → field estimates and held-out scores</text>
-  <path d="M48 122H1232" stroke="#a8b5bd" stroke-width="2" />
-  <rect x="24" y="144" width="1232" height="900" rx="8" fill="#1b2327" stroke="#303b41" stroke-width="1.5" />
-
-  <text x="48" y="184" class="label">PREPARE SYNTHETIC INPUTS</text>
-  <g aria-label="Build aperture masks">
-    <rect x="48" y="206" width="248" height="148" rx="8" class="card" />
-    <text x="72" y="246" class="heading">Build apertures</text>
-    <text x="72" y="282" class="body muted">Bar · wedge · ring</text>
-    <text x="72" y="312" class="body muted">Group frames; prune</text>
-    <text x="72" y="340" class="body muted">cross-group overlap</text>
+  <rect width="1280" height="1180" fill="#14191c" />
+  <text x="40" y="64" class="title">CortexProbe pipeline</text>
+  <text x="40" y="102" class="body muted">Prepare matched frames. Fit a field. Test predictions.</text>
+  <g aria-label="Prepare matched frames">
+    <rect x="32" y="132" width="1216" height="190" rx="8" class="panel" />
+    <text x="56" y="174" class="heading">Prepare matched frames</text>
+    <path d="M418 202V298M822 202V298" stroke="#34424a" />
+    <text x="56" y="220" class="step">Build masks</text>
+    <text x="56" y="254" class="note muted">Bar · wedge · ring</text>
+    <text x="56" y="281" class="note muted">Group + prune frames.</text>
+    <text x="442" y="220" class="step">Create responses</text>
+    <text x="442" y="254" class="note muted">Gaussian overlap × amplitude</text>
+    <text x="442" y="281" class="note muted">+ baseline; optional seeded noise.</text>
+    <text x="846" y="220" class="step">Align inputs</text>
+    <text x="846" y="254" class="note muted">One mask, response + group</text>
+    <text x="846" y="281" class="note muted">per retained frame</text>
+    <text x="846" y="308" class="note muted">Check shapes + bounds.</text>
   </g>
-  <path d="M298 280H336" class="flow" marker-end="url(#arrow)" />
-  <g aria-label="Create responses from retained masks">
-    <rect x="344" y="206" width="280" height="148" rx="8" class="card" />
-    <text x="368" y="246" class="heading">Create responses</text>
-    <text x="368" y="282" class="body muted">Gaussian–mask overlap</text>
-    <text x="368" y="312" class="body muted">× amplitude + baseline</text>
-    <text x="368" y="340" class="body muted">Optional seeded noise</text>
+  <path d="M640 322V338M640 368V380" class="flow" />
+  <text x="640" y="360" class="note cyan" text-anchor="middle">Same inputs · separate fits</text>
+  <path d="M320 406V380H960V406" class="flow" marker-start="url(#arrow)" marker-end="url(#arrow)" />
+  <rect x="32" y="414" width="576" height="650" rx="8" class="panel" />
+  <path d="M42 414H598" class="flow" />
+  <text x="56" y="458" class="heading">Estimate the field</text>
+  <text x="56" y="490" class="body muted">Use all retained frames</text>
+  <rect x="672" y="414" width="576" height="650" rx="8" class="panel" />
+  <path d="M682 414H1238" class="flow" />
+  <text x="696" y="458" class="heading">Test predictions</text>
+  <text x="696" y="490" class="body muted">Repeat for each usable group</text>
+  <g aria-label="Search candidates on all retained frames">
+    <rect x="56" y="514" width="528" height="102" rx="8" class="card" />
+    <text x="80" y="552" class="step">Search candidates</text>
+    <text x="80" y="590" class="body muted">Center + width grid</text>
   </g>
-  <path d="M626 280H672" class="flow" marker-end="url(#arrow)" />
-  <g aria-label="Align and validate inputs">
-    <rect x="680" y="206" width="552" height="148" rx="8" class="card fit" />
-    <text x="704" y="246" class="heading">Align inputs</text>
-    <text x="704" y="286" class="body muted">One mask, response + group per retained frame</text>
-    <text x="704" y="324" class="body muted">Check shapes, values + fit bounds</text>
+  <path d="M320 616V634" class="flow" marker-end="url(#arrow)" />
+  <g aria-label="Refine the all-frame fit">
+    <rect x="56" y="642" width="528" height="168" rx="8" class="card" />
+    <text x="80" y="680" class="step">Refine the fit</text>
+    <text x="80" y="718" class="body muted">SciPy refinement within bounds</text>
+    <text x="80" y="765" class="note muted">Solve amplitude + baseline at every</text>
+    <text x="80" y="793" class="note muted">candidate and trial geometry.</text>
+    <path d="M80 738H560" stroke="#34424a" />
   </g>
-
-  <path d="M956 354V386H36V853" class="flow" />
-  <path d="M36 532H40" class="flow" marker-end="url(#arrow)" />
-  <path d="M36 853H40" class="flow" marker-end="url(#arrow)" />
-  <text x="48" y="377" class="small cyan">same matched inputs · independent fits</text>
-
-  <text x="48" y="432" class="label">ESTIMATE THE FIELD · ALL RETAINED FRAMES</text>
-  <g aria-label="Search candidate field geometries">
-    <rect x="48" y="450" width="248" height="164" rx="8" class="card fit" />
-    <text x="72" y="490" class="heading">Candidate grid</text>
-    <text x="72" y="532" class="body muted">Center + width search</text>
-    <text x="72" y="567" class="body muted">Best in-sample R²</text>
+  <path d="M320 810V828" class="flow" marker-end="url(#arrow)" />
+  <g aria-label="Read the field estimate and checks">
+    <rect x="56" y="836" width="528" height="212" rx="8" class="card result" />
+    <text x="80" y="874" class="step">Field estimate + checks</text>
+    <text x="80" y="1010" class="note muted">In-sample R² · local uncertainty · residual checks</text>
+    <g aria-label="Gaussian center and width schematic" transform="translate(80 902)">
+      <circle cx="50" cy="50" r="36" fill="#55c4e0" opacity="0.06" />
+      <circle cx="50" cy="50" r="25" fill="#55c4e0" opacity="0.12" />
+      <circle cx="50" cy="50" r="13" fill="#55c4e0" opacity="0.25" />
+      <circle cx="50" cy="50" r="36" fill="none" stroke="#55c4e0" stroke-opacity="0.35" />
+      <circle cx="50" cy="50" r="25" fill="none" stroke="#55c4e0" stroke-opacity="0.6" />
+      <path d="M42 50h16M50 42v16M50 78h25m-3-3 3 3-3 3" fill="none" stroke="#55c4e0" stroke-width="1.5" />
+    </g>
+    <text x="198" y="936" class="body muted">Center (x, y), width,</text>
+    <text x="198" y="968" class="body muted">amplitude + baseline</text>
   </g>
-  <path d="M298 532H336" class="flow" marker-end="url(#arrow)" />
-  <g aria-label="Refine the full-data field geometry">
-    <rect x="344" y="450" width="280" height="164" rx="8" class="card fit" />
-    <text x="368" y="490" class="heading">Refine geometry</text>
-    <text x="368" y="532" class="body muted">Bounded x0, y0, σ</text>
-    <text x="368" y="567" class="body muted">SciPy least squares</text>
+  <g aria-label="Hold out one complete group">
+    <rect x="696" y="514" width="528" height="110" rx="8" class="card" />
+    <text x="720" y="552" class="step">Hold out one group</text>
+    <text x="720" y="582" class="note muted">Train on the other groups.</text>
+    <text x="720" y="610" class="note muted">Keep held-out data separate.</text>
   </g>
-  <path d="M626 532H672" class="flow" marker-end="url(#arrow)" />
-  <g aria-label="Read the full-data field and diagnostics">
-    <rect x="680" y="450" width="552" height="164" rx="8" class="card" />
-    <text x="704" y="490" class="heading">Field estimate + checks</text>
-    <text x="704" y="532" class="body muted">Center · width · amplitude · baseline</text>
-    <text x="704" y="567" class="body muted">In-sample R² · acceptance · diagnostics</text>
-    <text x="704" y="598" class="small muted">Local geometry uncertainty + residual structure</text>
+  <path d="M960 624V642" class="flow" marker-end="url(#arrow)" />
+  <g aria-label="Fit training frames independently">
+    <rect x="696" y="650" width="528" height="128" rx="8" class="card" />
+    <text x="720" y="688" class="step">Fit training frames</text>
+    <text x="720" y="720" class="note muted">Candidate grid → bounded refinement.</text>
+    <text x="720" y="754" class="note muted">Solve amplitude + baseline at every geometry.</text>
   </g>
-  <text x="48" y="650" class="body muted">At every candidate and refinement step: solve amplitude + baseline by linear least squares.</text>
-
-  <text x="48" y="695" class="label">TEST EXCLUDED GROUPS · REPEAT FOR EACH USABLE GROUP</text>
-  <path d="M172 760V732H804V752" class="bypass" marker-end="url(#excluded-arrow)" />
-  <text x="368" y="721" class="small excluded">held-out masks → prediction only</text>
-
-  <g aria-label="Exclude one complete group">
-    <rect x="48" y="760" width="248" height="186" rx="8" class="card" />
-    <text x="72" y="800" class="compact-heading">Hold out one group</text>
-    <text x="72" y="845" class="body muted">Train on all</text>
-    <text x="72" y="876" class="body muted">other groups.</text>
-    <text x="72" y="920" class="small muted">Keep test data separate.</text>
+  <path d="M960 778V796" class="flow" marker-end="url(#arrow)" />
+  <g aria-label="Predict from held-out masks with fixed parameters">
+    <rect x="696" y="804" width="528" height="106" rx="8" class="card" />
+    <text x="720" y="842" class="step">Predict held-out frames</text>
+    <text x="720" y="872" class="note muted">Keep all five parameters fixed.</text>
+    <text x="720" y="898" class="note held-out">Held-out masks → prediction</text>
   </g>
-  <path d="M298 853H336" class="flow" marker-end="url(#arrow)" />
-  <g aria-label="Independently fit the training frames">
-    <rect x="344" y="760" width="280" height="186" rx="8" class="card fit" />
-    <text x="368" y="800" class="heading">Fit training groups</text>
-    <text x="368" y="838" class="body muted">Grid search</text>
-    <text x="368" y="867" class="body muted">→ bounded refinement</text>
-    <text x="368" y="903" class="small muted">Solve amplitude + baseline</text>
-    <text x="368" y="930" class="small muted">at every geometry.</text>
+  <path d="M960 910V928" class="flow" marker-end="url(#arrow)" />
+  <g aria-label="Score only against held-out responses">
+    <rect x="696" y="936" width="528" height="112" rx="8" class="card result" />
+    <text x="720" y="974" class="step">Score predictions</text>
+    <text x="720" y="1002" class="note held-out">Held-out responses → scoring only.</text>
+    <text x="720" y="1030" class="note muted">Mean + sample SD of finite fold R².</text>
   </g>
-  <path d="M626 853H672" class="flow" marker-end="url(#arrow)" />
-  <g aria-label="Predict excluded frames with fixed fitted parameters">
-    <rect x="680" y="760" width="248" height="186" rx="8" class="card" />
-    <text x="704" y="800" class="compact-heading">Predict held-out</text>
-    <text x="704" y="845" class="body muted">Freeze all five</text>
-    <text x="704" y="876" class="body muted">parameters.</text>
-    <text x="704" y="920" class="small muted">Use excluded masks.</text>
-  </g>
-  <path d="M930 853H976" class="flow" marker-end="url(#arrow)" />
-  <g aria-label="Score held-out predictions against held-out responses">
-    <rect x="984" y="760" width="248" height="186" rx="8" class="card" />
-    <text x="1008" y="800" class="compact-heading">Score predictions</text>
-    <text x="1008" y="845" class="body muted">Fold R²</text>
-    <text x="1008" y="882" class="small muted">Finite-fold mean</text>
-    <text x="1008" y="915" class="small muted">+ sample SD</text>
-  </g>
-  <path d="M172 946V984H1108V954" class="bypass" marker-end="url(#excluded-arrow)" />
-  <text x="368" y="1013" class="body excluded">held-out responses → scoring only</text>
-
-  <text x="48" y="1080" class="small muted">The full-data fit does not initialize the fold models.</text>
-  <text x="48" y="1110" class="small muted">Acceptance uses in-sample checks; held-out scores do not gate it.</text>
-  <text x="48" y="1140" class="small muted">Examples and recorded results are synthetic. No human-data or neural-network evaluation.</text>
+  <text x="40" y="1100" class="note muted">The all-frame fit does not initialize validation fits.</text>
+  <text x="40" y="1129" class="note muted">Held-out scores do not determine acceptance.</text>
+  <text x="40" y="1158" class="note muted">Examples and recorded results are synthetic. No human-data or neural-network evaluation.</text>
 </svg>

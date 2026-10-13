@@ -4,13 +4,13 @@ CortexProbe fits a Gaussian receptive field and checks its predictions on held-o
 groups. The examples and recorded experiments use synthetic responses. The
 full-data estimate and validation scores come from separate fits to shared inputs.
 
-[![Prepare aligned synthetic inputs, fit a field on all frames, and test separate training-fold models using held-out masks for prediction and held-out responses for scoring](figures/pipeline.png)](figures/pipeline.png)
+[![Prepare matched frames, then follow two separate paths: estimate a field from all frames, and test independent training fits using held-out masks for prediction and held-out responses for scoring.](figures/pipeline.png)](figures/pipeline.png)
 
 [Editable SVG](figures/pipeline.svg) · [Figure guide](figures/) · [Videos](media/)
 
-One diagram connects input preparation, full-data fitting, and grouped
-validation. The editable SVG is its source, with a PNG preview for the README
-and a responsive HTML counterpart in the documentation.
+Start with the matched frames at the top. Follow the two paths downward:
+estimate the field from all retained frames, and test predictions by holding out
+one group at a time. Each path fits its own models.
 
 ## Prepare the inputs
 
@@ -69,11 +69,12 @@ Within each fold, held-out masks enter prediction and held-out responses enter
 scoring. Both bypass the training fit. Repeat the split, fit, prediction, and
 scoring steps for each usable group.
 
-The reported `cv_r2` is the mean of finite fold R² scores. It is not a single R²
-computed over pooled predictions. Folds with at most five training frames are
-skipped; invalid fitted geometry yields an undefined score. Inspect `fold_r2`
-to see which scores contributed. A finite fold fit is scored even if its
-optimizer did not converge.
+The reported `cv_r2` is the mean of finite fold R² scores; `cv_r2_sd` is their
+sample standard deviation. The score is not computed from pooled predictions.
+Folds with at most five training frames are skipped;
+invalid fitted geometry yields an undefined score. Inspect `fold_r2` to see
+which scores contributed. A finite fold fit is scored even if its optimizer
+did not converge.
 
 ## Interpret the checks
 

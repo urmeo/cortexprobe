@@ -56,17 +56,22 @@ def test_pipeline_is_readable_html_with_independent_fitting_paths(docs_script, b
     html = (built_site / page).read_text()
     assert html.count('class="pipeline-view"') == 1
     assert 'aria-labelledby="pipeline-title"' in html
-    assert "Build apertures" in html
+    assert "Prepare matched frames" in html
+    assert "Build masks" in html
     assert "Create responses" in html
     assert "Align inputs" in html
-    assert "ESTIMATE THE FIELD · ALL RETAINED FRAMES" in html
-    assert "Fit training groups" in html
-    assert "Freeze all five parameters." in html
+    assert "Same inputs · separate fits" in html
+    assert "Use all retained frames" in html
+    assert "Hold out one group" in html
+    assert "Fit training frames" in html
+    assert html.count("Solve amplitude + baseline at every candidate and trial geometry.") == 2
+    assert "Keep all five parameters fixed." in html
     assert "Held-out masks → prediction" in html
-    assert "Held-out responses → scoring" in html
-    assert "The full-data fit does not initialize the fold models." in html
-    assert "Within each fold, held-out responses are used only to score predictions." in html
-    assert "Examples and recorded results use synthetic responses." in html
+    assert "Held-out responses → scoring only" in html
+    assert "Mean + sample SD of finite fold R²." in html
+    assert "The all-frame fit does not initialize validation fits." in html
+    assert "Held-out scores do not determine acceptance." in html
+    assert "Examples and recorded results are synthetic." in html
     assert "No human-data or neural-network evaluation." in html
     assert 'src="docs/figures/pipeline.png"' not in html
     assert 'src="figures/pipeline.png"' not in html

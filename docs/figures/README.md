@@ -1,9 +1,9 @@
 # Figures
 
-The pipeline combines input preparation, field fitting, and grouped validation
-in one diagram, with an editable [SVG source](pipeline.svg) and a
-[PNG preview](pipeline.png). The documentation shows the same workflow as
-responsive HTML. Keep the SVG, PNG preview, and HTML counterpart in sync.
+The pipeline starts with matched frames, then separates the field estimate
+from held-out prediction tests. Read each path from top to bottom.
+The editable [SVG](pipeline.svg), [PNG preview](pipeline.png), and responsive
+HTML in the documentation show the same workflow. Keep them in sync.
 
 The other 11 figures are scientific plots generated with Matplotlib from the
 committed configuration, recorded tables, and stated synthetic demonstrations.
@@ -18,7 +18,7 @@ These commands leave the pipeline diagram unchanged.
 
 | Figure | What it shows | Basis |
 |---|---|---|
-| [Pipeline](pipeline.png) | Prepare aligned inputs → full-data fit and separate grouped refits → field estimate and held-out scores | Implemented synthetic workflow; editable SVG with a PNG preview |
+| [Pipeline](pipeline.png) | Matched frames → separate paths for the all-frame estimate and grouped prediction tests | Implemented synthetic workflow; editable SVG with a PNG preview |
 | [Apertures](stimuli.png) | Bar, wedge, and ring masks with group labels | Configured stimulus designs |
 | [Gaussian overlap](model.png) | A field's overlap with the aperture produces a response | Forward-model illustration |
 | [Response curves](fitted-response.png) | Observations, full-data fit, held-out predictions, and residuals | Seeded demonstration |

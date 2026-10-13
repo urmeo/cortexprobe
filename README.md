@@ -5,7 +5,7 @@ Estimate the field and test predictions on held-out groups with Python, NumPy,
 and SciPy. **Examples and recorded results are synthetic. No human-data or
 neural-network evaluation.**
 
-[![Build and prune apertures, create synthetic responses, and align frames. The matched data branch into a full-data candidate search and bounded refinement, and independent training-fold fits. Each fold excludes one group, freezes five fitted parameters, predicts excluded masks, and scores against excluded responses. Amplitude and baseline are solved at every geometry. Held-out responses enter scoring only.](docs/figures/pipeline.png)](docs/figures/pipeline.png)
+[![Prepare matched masks, responses, and groups. Estimate a field from all frames, and separately test each held-out group using training-only fits. Keep all five parameters fixed for prediction; use held-out responses only for scoring.](docs/figures/pipeline.png)](docs/figures/pipeline.png)
 
 [Pipeline details](docs/pipeline.md) · [Editable SVG](docs/figures/pipeline.svg) · [Documentation](https://urmeo.github.io/cortexprobe/)
 
