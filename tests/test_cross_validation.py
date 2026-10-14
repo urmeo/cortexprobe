@@ -100,7 +100,7 @@ def test_public_apertures_cannot_change_validation_stimuli(validator, apertures)
         validator.apertures = apertures.copy()
 
     exposed = validator.apertures
-    exposed.shape = (len(apertures), -1)
+    exposed.resize((len(apertures), apertures[0].size))
 
     assert np.array_equal(validator.apertures, apertures)
 

@@ -128,7 +128,7 @@ def test_public_apertures_cannot_invalidate_cached_predictions(fitter, apertures
         fitter.apertures = apertures.copy()
 
     exposed = fitter.apertures
-    exposed.shape = (fitter.n_frames, -1)
+    exposed.resize((fitter.n_frames, apertures[0].size))
 
     assert np.array_equal(fitter.apertures, apertures)
 
