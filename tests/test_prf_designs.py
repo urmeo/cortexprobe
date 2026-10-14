@@ -83,3 +83,23 @@ def test_amplitude_scaling_does_not_change_geometry(fitter, grid, apertures, amp
     )
     assert scaled.beta == pytest.approx(amplitude, rel=1e-6)
     assert scaled.baseline == pytest.approx(0.5, abs=1e-10)
+
+
+@pytest.mark.parametrize("scale", [1e-200, 1e200])
+@pytest.mark.parametrize("noise", [0.0, 0.2])
+def test_extreme_response_units_preserve_fit_and_diagnostics(
+    fitter, grid, apertures, scale, noise
+) -> None:
+    response = synthesise(grid, apertures, TRUTH, noise=noise, seed=5)
+    reference = fitter.fit_unit(response)
+    with np.errstate(over="raise", invalid="raise", divide="raise"):
+        scaled = fitter.fit_unit(scale * response)
+
+    assert scaled.accepted
+    assert (scaled.x0, scaled.y0, scaled.sigma) == pytest.approx(
+        (reference.x0, reference.y0, reference.sigma), abs=1e-6
+    )
+    assert scaled.beta / scale == pytest.approx(reference.beta, rel=1e-6)
+    assert scaled.baseline / scale == pytest.approx(reference.baseline, rel=1e-6)
+    assert scaled.r2 == pytest.approx(reference.r2, abs=1e-10)
+    assert scaled.second_field_r2 == pytest.approx(reference.second_field_r2, abs=1e-10)

@@ -120,10 +120,16 @@ def _solve_amplitude(prediction: FloatArray, response: FloatArray) -> tuple[Floa
 
 
 def _r_squared(response: FloatArray, fitted: FloatArray) -> float:
+    scale = float(np.max(np.abs(response)))
+    if scale == 0.0:
+        return 0.0
+    response = response / scale
     total = float(np.sum((response - response.mean()) ** 2))
     if total <= 0.0:
         return 0.0
-    residual = float(np.sum((response - fitted) ** 2))
+    # An excessively poor prediction has a negative infinite score.
+    with np.errstate(over="ignore"):
+        residual = float(np.sum((response - fitted / scale) ** 2))
     return 1.0 - residual / total
 
 
@@ -272,6 +278,11 @@ class PRFFitter:
 
         Project candidates against the fitted prediction and intercept; no second search runs.
         """
+        scale = max(float(np.max(np.abs(response))), float(np.max(np.abs(fitted))))
+        if scale == 0.0:
+            return 0.0
+        response = response / scale
+        fitted = fitted / scale
         total = float(np.sum((response - response.mean()) ** 2))
         if total <= 0.0:
             return 0.0

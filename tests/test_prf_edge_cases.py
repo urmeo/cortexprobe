@@ -248,14 +248,16 @@ def test_unit_volume_is_lost_above_the_admissible_range(grid) -> None:
     assert weights[grid.field_mask].sum() < MIN_ON_GRID_VOLUME
 
 
-def test_a_two_lobed_unit_is_flagged_as_misspecified(fitter, grid, apertures) -> None:
+@pytest.mark.parametrize("scale", [1e-200, 1.0, 1e200])
+def test_a_two_lobed_unit_is_flagged_as_misspecified(fitter, grid, apertures, scale) -> None:
     """A two-lobe response leaves structure after a single-Gaussian fit."""
     lobes = GaussianReceptiveField(14.0, 0.0, 3.0).weights(grid) + GaussianReceptiveField(
         -14.0, 0.0, 3.0
     ).weights(grid)
     response = 3.0 * predict(lobes, apertures) + 0.5
 
-    fit = fitter.fit_unit(response)
+    with np.errstate(over="raise", invalid="raise", divide="raise"):
+        fit = fitter.fit_unit(scale * response)
 
     assert fit.accepted
     assert fit.r2 > fitter.config.r2_threshold
@@ -329,10 +331,32 @@ def test_unfittable_response_reports_no_second_field() -> None:
     assert np.isnan(UnitFit.failed().second_field_r2)
 
 
-def test_r_squared_of_a_constant_response_is_zero() -> None:
-    constant = np.full(10, 3.0)
+@pytest.mark.parametrize("value", [0.0, 1e-200, 3.0, 1e200])
+def test_r_squared_of_a_constant_response_is_zero(value) -> None:
+    constant = np.full(10, value)
 
     assert _r_squared(constant, constant) == 0.0
+
+
+@pytest.mark.parametrize("scale", [1e-200, 1.0, 1e200])
+@pytest.mark.parametrize(("prediction", "score"), [([1.0, 2.0, 3.0], 1.0), ([3.0, 2.0, 1.0], -3.0)])
+def test_r_squared_preserves_perfect_and_negative_scores_across_response_units(
+    scale, prediction, score
+) -> None:
+    response = scale * np.array([1.0, 2.0, 3.0])
+    fitted = scale * np.array(prediction)
+
+    with np.errstate(over="raise", invalid="raise", divide="raise"):
+        assert _r_squared(response, fitted) == pytest.approx(score)
+
+
+@pytest.mark.parametrize("scale", [1.0, 1e-200])
+def test_excessively_large_predictions_have_negative_infinite_r_squared(scale) -> None:
+    response = scale * np.array([1.0, 2.0, 3.0])
+    fitted = 1e200 * np.array([1.0, 2.0, 3.0])
+
+    with np.errstate(over="raise", invalid="raise", divide="raise"):
+        assert _r_squared(response, fitted) == -np.inf
 
 
 def test_standard_errors_are_undefined_without_degrees_of_freedom() -> None:
@@ -360,8 +384,9 @@ def test_fit_all_rejects_a_non_matrix(fitter) -> None:
         fitter.fit_all(np.zeros(fitter.n_frames))
 
 
-def test_second_field_r2_of_a_constant_response_is_zero(fitter) -> None:
-    constant = np.full(fitter.n_frames, 2.0)
+@pytest.mark.parametrize("value", [0.0, 1e-200, 2.0, 1e200])
+def test_second_field_r2_of_a_constant_response_is_zero(fitter, value) -> None:
+    constant = np.full(fitter.n_frames, value)
 
     assert fitter._second_field_r2(constant, constant) == 0.0
 
