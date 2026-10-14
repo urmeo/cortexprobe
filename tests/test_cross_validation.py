@@ -115,6 +115,23 @@ def test_real_signal_generalises(validator, grid, apertures) -> None:
     assert result.validation_complete
 
 
+def test_held_out_prediction_handles_large_finite_response_units(
+    grid, apertures, sequence, fit_config
+) -> None:
+    scaled_apertures = 10.0 * apertures
+    signal = predict(GaussianReceptiveField(*TRUTH).weights(grid), scaled_apertures)
+    response = 1e308 * (2.0 * (signal - signal.min()) / np.ptp(signal) - 1.0)
+    validator = CrossValidator(grid, scaled_apertures, sequence.group, fit_config)
+
+    with np.errstate(over="raise", invalid="raise", divide="raise"):
+        result = validator.validate_unit(response)
+
+    assert result.fit.accepted
+    assert result.cv_r2 == pytest.approx(1.0)
+    assert result.n_valid_folds == result.n_total_folds == 4
+    assert result.validation_complete
+
+
 def test_one_finite_fold_does_not_report_complete_validation() -> None:
     result = CrossValidatedFit(UnitFit.failed(), (0.9, np.nan, np.nan, np.nan))
 
@@ -153,6 +170,48 @@ def test_validation_without_finite_fold_scores_is_incomplete(scores) -> None:
     assert result.n_valid_folds == 0
     assert result.n_total_folds == len(scores)
     assert not result.validation_complete
+
+
+@pytest.mark.parametrize("score", [0.0, 1e308, -1e308])
+@pytest.mark.parametrize("scalar_type", [float, np.float64])
+def test_identical_finite_scores_have_a_finite_mean_and_zero_dispersion(score, scalar_type) -> None:
+    score = scalar_type(score)
+    result = CrossValidatedFit(UnitFit.failed(), (score, score))
+
+    with np.errstate(all="raise"):
+        assert result.cv_r2 == score
+        assert result.cv_r2_sd == 0.0
+    assert result.n_valid_folds == 2
+    assert result.validation_complete
+
+
+@pytest.mark.parametrize("scale", [1e-200, 1e308])
+def test_fold_summary_preserves_representable_large_and_small_dispersion(scale) -> None:
+    result = CrossValidatedFit(UnitFit.failed(), (-scale, 0.0))
+
+    with np.errstate(all="raise"):
+        assert result.cv_r2 == pytest.approx(-scale / 2.0, rel=1e-12, abs=0.0)
+        assert result.cv_r2_sd == pytest.approx(scale / np.sqrt(2.0), rel=1e-12, abs=0.0)
+    assert result.n_valid_folds == 2
+    assert result.validation_complete
+
+
+@pytest.mark.parametrize("scalar_type", [float, np.float64])
+def test_dispersion_beyond_float_range_is_infinite_without_warnings(scalar_type) -> None:
+    result = CrossValidatedFit(UnitFit.failed(), (scalar_type(-1.7e308), scalar_type(1.7e308)))
+
+    with np.errstate(all="raise"):
+        assert result.cv_r2 == 0.0
+        assert result.cv_r2_sd == float("inf")
+
+
+@pytest.mark.parametrize("scalar_type", [float, np.float64])
+def test_large_opposite_scores_have_finite_representable_dispersion(scalar_type) -> None:
+    result = CrossValidatedFit(UnitFit.failed(), (scalar_type(-1e308), scalar_type(1e308)))
+
+    with np.errstate(all="raise"):
+        assert result.cv_r2 == 0.0
+        assert result.cv_r2_sd == pytest.approx(1e308 * np.sqrt(2.0))
 
 
 def test_constant_held_out_target_leaves_validation_incomplete(

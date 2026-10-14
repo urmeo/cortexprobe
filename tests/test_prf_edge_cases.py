@@ -133,6 +133,22 @@ def test_public_apertures_cannot_invalidate_cached_predictions(fitter, apertures
     assert np.array_equal(fitter.apertures, apertures)
 
 
+def test_public_candidates_cannot_invalidate_cached_predictions(fitter, grid, apertures) -> None:
+    candidates = fitter.candidates
+    with pytest.raises(AttributeError):
+        candidates.clear()
+    with pytest.raises(TypeError):
+        candidates[0] = GaussianReceptiveField(-30.0, -30.0, 1.0)
+    with pytest.raises(AttributeError):
+        fitter.candidates = candidates[::-1]
+
+    fit = fitter.fit_unit(synthesise(grid, apertures, (12.0, 8.0, 5.0)))
+
+    assert fitter.candidates == candidates
+    assert fit.accepted
+    assert (fit.x0, fit.y0, fit.sigma) == pytest.approx((12.0, 8.0, 5.0), abs=0.01)
+
+
 def test_zero_response_is_not_fitted(fitter) -> None:
     assert not fitter.fit_unit(np.zeros(fitter.n_frames)).accepted
 

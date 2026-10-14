@@ -158,9 +158,10 @@ class BarSweep(ApertureGenerator):
         labels: list[int] = []
         groups: list[int] = []
         for direction in self.config.directions:
-            theta = np.radians(direction)
+            theta = np.radians(direction % 180)
             projection = grid.x * np.cos(theta) + grid.y * np.sin(theta)
-            for step, offset in enumerate(travel):
+            offsets = travel if direction < 180 else travel[::-1]
+            for step, offset in enumerate(offsets):
                 frames.append(np.abs(projection - offset) <= half_width)
                 labels.append(direction * label_stride + step)
                 groups.append(direction % 180)

@@ -30,13 +30,19 @@ class CrossValidatedFit:
     def cv_r2(self) -> float:
         """Mean finite held-out R²; undefined folds do not enter the mean."""
         scores = [score for score in self.fold_r2 if np.isfinite(score)]
-        return float(np.mean(scores)) if scores else float("nan")
+        if not scores:
+            return float("nan")
+        scale = float(max(abs(score) for score in scores))
+        return float(np.mean(np.asarray(scores) / scale)) * scale if scale else 0.0
 
     @property
     def cv_r2_sd(self) -> float:
         """Sample standard deviation of finite held-out R² scores."""
         scores = [score for score in self.fold_r2 if np.isfinite(score)]
-        return float(np.std(scores, ddof=1)) if len(scores) > 1 else float("nan")
+        if len(scores) < 2:
+            return float("nan")
+        scale = float(max(abs(score) for score in scores))
+        return float(np.std(np.asarray(scores) / scale, ddof=1)) * scale if scale else 0.0
 
     @property
     def n_folds(self) -> int:
@@ -149,7 +155,13 @@ class CrossValidator:
             return float("nan")
         field = GaussianReceptiveField(train_fit.x0, train_fit.y0, train_fit.sigma)
         prediction = predict(field.weights(self.grid), self.apertures[test])
-        fitted = train_fit.beta * prediction + train_fit.baseline
+        with np.errstate(over="ignore", invalid="ignore"):
+            fitted = train_fit.beta * prediction + train_fit.baseline
+            if not np.isfinite(fitted).all():
+                scale = max(abs(train_fit.beta), abs(train_fit.baseline)) or 1.0
+                fitted = (
+                    (train_fit.beta / scale) * prediction + train_fit.baseline / scale
+                ) * scale
         return _r_squared(response[test], fitted)
 
     def validate_all(self, activations: FloatArray) -> list[CrossValidatedFit]:

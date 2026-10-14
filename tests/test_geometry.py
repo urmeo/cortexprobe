@@ -93,12 +93,29 @@ def test_field_mask_is_symmetric() -> None:
     assert np.array_equal(mask, np.flipud(mask))
 
 
-def test_derived_arrays_are_cached_not_rebuilt() -> None:
+@pytest.mark.parametrize("name", ["x", "y", "eccentricity", "polar_angle", "field_mask"])
+def test_derived_arrays_share_cached_data(name) -> None:
     grid = Grid(32)
 
-    assert grid.x is grid.x
-    assert grid.eccentricity is grid.eccentricity
-    assert grid.field_mask is grid.field_mask
+    assert np.shares_memory(getattr(grid, name), getattr(grid, name))
+
+
+@pytest.mark.parametrize("name", ["x", "y", "eccentricity", "polar_angle", "field_mask"])
+def test_public_grid_arrays_cannot_change_cached_geometry(name) -> None:
+    grid = Grid(32)
+    original = getattr(grid, name).copy()
+    exposed = getattr(grid, name)
+
+    with pytest.raises(ValueError, match="read-only"):
+        exposed[0, 0] = 0
+    with pytest.raises(ValueError, match="WRITEABLE"):
+        exposed.setflags(write=True)
+
+    exposed.resize((original.size,))
+
+    assert getattr(grid, name).shape == grid.shape
+    assert np.array_equal(getattr(grid, name), original)
+    assert np.array_equal(grid.eccentricity, np.hypot(grid.x, grid.y))
 
 
 def test_grids_are_frozen_and_comparable() -> None:

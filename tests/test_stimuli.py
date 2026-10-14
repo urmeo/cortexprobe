@@ -88,6 +88,17 @@ def test_opposite_sweeps_produce_identical_frames() -> None:
         assert np.array_equal(flat[step], flat[2 * n_steps - 1 - step])
 
 
+@pytest.mark.parametrize("directions", [(0, 180), (30, 210), (45, 225), (90, 270), (135, 315)])
+@pytest.mark.parametrize("n_steps", [3, 8, 20])
+def test_opposite_sweeps_remain_exact_copies_at_pixel_boundaries(directions, n_steps) -> None:
+    config = StimulusConfig(resolution=8, n_steps=n_steps, directions=directions)
+    sequence = build_apertures(config, "bar")
+
+    assert np.array_equal(sequence.apertures[:n_steps], sequence.apertures[n_steps:][::-1])
+    assert len(np.unique(sequence.frame_index)) == sequence.n_frames
+    assert np.unique(sequence.group).tolist() == [directions[0]]
+
+
 def test_a_four_direction_set_can_still_contain_opposite_sweeps() -> None:
     config = StimulusConfig(resolution=RESOLUTION, n_steps=20, directions=(0, 90, 180, 270))
     sequence = build_apertures(config, "bar")

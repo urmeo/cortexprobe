@@ -148,6 +148,7 @@ class ModelConfig(ConfigBase):
             raise ConfigError("tap layers must be nonempty names")
         if len(set(self.layers)) != len(self.layers):
             raise ConfigError("tap layers must be unique")
+        object.__setattr__(self, "layers", tuple(self.layers))
         _require_integer(self.pool_to, "pool_to")
         if self.pool_to < 2:
             raise ConfigError("pool_to must be at least 2 to retain retinotopic structure")
@@ -187,6 +188,7 @@ class FitConfig(ConfigBase):
             )
         if high <= low:
             raise ConfigError("sigma_bounds must be increasing")
+        object.__setattr__(self, "sigma_bounds", (low, high))
         if self.max_nfev < 1:
             raise ConfigError("max_nfev must be positive")
         _require_finite(self.r2_threshold, "r2_threshold")

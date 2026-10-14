@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import math
 from abc import ABC, abstractmethod
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 import numpy as np
@@ -98,7 +99,7 @@ def predict(weights: FloatArray, apertures: FloatArray) -> FloatArray:
 
 
 def design_matrix(
-    fields: list[GaussianReceptiveField], grid: Grid, apertures: FloatArray
+    fields: Sequence[GaussianReceptiveField], grid: Grid, apertures: FloatArray
 ) -> FloatArray:
     """Stack predicted timecourses, one column per candidate field."""
     if not fields:

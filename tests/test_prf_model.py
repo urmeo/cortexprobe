@@ -168,6 +168,26 @@ def test_free_amplitude_absorbs_unit_peak_normalization(grid, apertures, sigma) 
     assert _r_squared(response, peak_fit) == pytest.approx(_r_squared(response, volume_fit))
 
 
+def test_constant_prediction_fits_only_the_baseline() -> None:
+    response = np.arange(12.0)
+
+    coefficients, fitted = _solve_amplitude(np.full(12, 1e-200), response)
+
+    assert coefficients == pytest.approx((0.0, response.mean()))
+    assert fitted == pytest.approx(np.full(12, response.mean()))
+
+
+def test_amplitude_solve_preserves_variation_around_a_large_baseline() -> None:
+    prediction = np.arange(32.0) / 31.0
+    response = 1e16 + 2.0 * np.arange(32.0)
+
+    coefficients, fitted = _solve_amplitude(prediction, response)
+
+    assert coefficients[0] == pytest.approx(62.0, abs=1e-10)
+    assert coefficients[1] == 1e16
+    assert np.array_equal(fitted, response)
+
+
 def test_centered_volume_guard_does_not_guarantee_edge_mass(grid) -> None:
     centered = GaussianReceptiveField(0, 0, 5).weights(grid)[grid.field_mask].sum()
     edge = GaussianReceptiveField(grid.radius, 0, 5).weights(grid)[grid.field_mask].sum()

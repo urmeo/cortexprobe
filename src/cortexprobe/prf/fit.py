@@ -114,9 +114,46 @@ class UnitFit:
 
 def _solve_amplitude(prediction: FloatArray, response: FloatArray) -> tuple[FloatArray, FloatArray]:
     """Least-squares fit of ``response ~ beta * prediction + baseline``."""
-    design = np.column_stack([prediction, np.ones_like(prediction)])
-    coefficients, *_ = np.linalg.lstsq(design, response, rcond=None)
-    return coefficients, design @ coefficients
+    prediction_scale = float(np.max(np.abs(prediction))) or 1.0
+    normalized_prediction = prediction / prediction_scale
+    prediction_mean = float(normalized_prediction.mean())
+    normalized_prediction -= prediction_mean
+    centered_scale = float(np.max(np.abs(normalized_prediction))) or 1.0
+    normalized_prediction /= centered_scale
+
+    # Shift before scaling to retain small variations around a large baseline.
+    response_anchor = float(response[0])
+    with np.errstate(over="ignore"):
+        shifted_response = response - response_anchor
+    if not np.isfinite(shifted_response).all():
+        response_anchor = 0.0
+        shifted_response = response
+    response_scale = float(np.max(np.abs(shifted_response))) or 1.0
+    design = np.column_stack([normalized_prediction, np.ones_like(prediction)])
+    coefficients, *_ = np.linalg.lstsq(design, shifted_response / response_scale, rcond=None)
+
+    # Combine scale exponents without overflowing an intermediate ratio.
+    response_mantissa, response_exponent = math.frexp(response_scale)
+    prediction_mantissa, prediction_exponent = math.frexp(prediction_scale)
+    centered_mantissa, centered_exponent = math.frexp(centered_scale)
+    try:
+        beta = math.ldexp(
+            float(coefficients[0]) * response_mantissa / prediction_mantissa / centered_mantissa,
+            response_exponent - prediction_exponent - centered_exponent,
+        )
+    except OverflowError:
+        beta = math.copysign(float("inf"), coefficients[0])
+
+    baseline_offset = coefficients[1] - coefficients[0] * prediction_mean / centered_scale
+    offsets = np.concatenate(([baseline_offset], design @ coefficients))
+    with np.errstate(over="ignore", invalid="ignore"):
+        restored = response_anchor + response_scale * offsets
+        if not np.isfinite(restored).all():
+            output_scale = max(abs(response_anchor), response_scale)
+            restored = (
+                response_anchor / output_scale + (response_scale / output_scale) * offsets
+            ) * output_scale
+    return np.array([beta, restored[0]]), restored[1:]
 
 
 def _r_squared(response: FloatArray, fitted: FloatArray) -> float:
@@ -215,7 +252,7 @@ class PRFFitter:
         self.config = config
         self._check_sigma_ceiling()
         self.n_independent_frames = _count_distinct_frames(self.apertures)
-        self.candidates = self._build_candidates()
+        self._candidates = tuple(self._build_candidates())
         self._predictions = design_matrix(self.candidates, grid, self.apertures)
 
     def _check_sigma_ceiling(self) -> None:
@@ -240,6 +277,11 @@ class PRFFitter:
     def apertures(self) -> FloatArray:
         """Read-only stimulus snapshot used by cached and refined predictions."""
         return self._apertures.view()
+
+    @property
+    def candidates(self) -> tuple[GaussianReceptiveField, ...]:
+        """Candidate geometries in the same order as their cached predictions."""
+        return self._candidates
 
     @property
     def n_frames(self) -> int:
@@ -297,8 +339,12 @@ class PRFFitter:
             return float("nan")
         residual = response - fitted
         design = np.column_stack([fitted, np.ones_like(fitted)])
-        coefficients, *_ = np.linalg.lstsq(design, self._predictions, rcond=None)
-        perpendicular = self._predictions - design @ coefficients
+        candidate_scale = float(np.max(np.abs(self._predictions)))
+        if candidate_scale == 0.0:
+            return 0.0
+        candidates = self._predictions / candidate_scale
+        coefficients, *_ = np.linalg.lstsq(design, candidates, rcond=None)
+        perpendicular = candidates - design @ coefficients
         norms = np.sum(perpendicular**2, axis=0)
         usable = norms > 1e-12
         if not usable.any():
@@ -319,7 +365,7 @@ class PRFFitter:
         response = np.asarray(response, dtype=np.float64)
         if response.shape != (self.n_frames,):
             raise ValueError("response must have one value per stimulus frame")
-        if not np.isfinite(response).all() or np.ptp(response) == 0.0:
+        if not np.isfinite(response).all() or np.all(response == response[0]):
             return UnitFit.failed()
 
         # Keep optimizer tolerances independent of response units and baseline.
@@ -351,6 +397,8 @@ class PRFFitter:
         coefficients, fitted = _solve_amplitude(
             predict(field.weights(self.grid), self.apertures), response
         )
+        if not np.isfinite(coefficients).all() or not np.isfinite(fitted).all():
+            return UnitFit.failed()
         score = _r_squared(response, fitted)
         # Residual and Jacobian scaling cancel in the geometry covariance.
         se_x0, se_y0, se_sigma = _standard_errors(

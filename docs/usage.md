@@ -70,7 +70,8 @@ Fit parameters are `x0`, `y0`, and `sigma` for geometry, `beta` for amplitude,
 and `baseline` for the offset.
 
 Fitters and validators copy their aperture inputs and expose read-only snapshots.
-Create a new fitter or validator to use different masks.
+Grid coordinates and the fitter's candidate fields are also read-only.
+Create a new fitter or validator to change the masks, grid, or fit settings.
 
 Bar directions must be unique integer degrees in `[0, 360)`. Opposite directions
 remain separate sweeps and share a validation group.

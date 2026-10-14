@@ -305,5 +305,29 @@ def test_unrepresentable_numeric_setting_is_a_config_error() -> None:
 
 def test_existing_list_containers_remain_usable() -> None:
     assert StimulusConfig(directions=[0, 90]).n_bar_frames == 64
-    assert ModelConfig(layers=["features.2"]).layers == ["features.2"]
-    assert FitConfig(sigma_bounds=[1.0, 10.0]).sigma_bounds == [1.0, 10.0]
+    assert ModelConfig(layers=["features.2"]).layers == ("features.2",)
+    assert FitConfig(sigma_bounds=[1.0, 10.0]).sigma_bounds == (1.0, 10.0)
+
+
+def test_layer_lists_cannot_change_a_frozen_configuration() -> None:
+    layers = ["features.2"]
+    config = RunConfig(model=ModelConfig(layers=layers))
+    digest = config.digest()
+
+    layers.append("features.2")
+
+    assert config.model.layers == ("features.2",)
+    assert config.digest() == digest
+    assert RunConfig.from_dict(json.loads(config.to_json())) == config
+
+
+def test_sigma_bound_lists_cannot_change_a_frozen_configuration() -> None:
+    bounds = [1.0, 10.0]
+    config = RunConfig(fit=FitConfig(sigma_bounds=bounds))
+    digest = config.digest()
+
+    bounds[:] = [20.0, 30.0]
+
+    assert config.fit.sigma_bounds == (1.0, 10.0)
+    assert config.digest() == digest
+    assert RunConfig.from_dict(json.loads(config.to_json())) == config
