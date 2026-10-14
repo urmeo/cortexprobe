@@ -103,6 +103,9 @@ class StimulusConfig(ConfigBase):
             _require_integer(direction, "directions")
         if any(not 0 <= d < 360 for d in self.directions):
             raise ConfigError("directions must be degrees in [0, 360)")
+        if len(set(self.directions)) != len(self.directions):
+            raise ConfigError("directions must be unique")
+        object.__setattr__(self, "directions", tuple(self.directions))
         _require_finite(self.wedge_span_deg, "wedge_span_deg")
         if not 0.0 < self.wedge_span_deg <= 360.0:
             raise ConfigError("wedge_span_deg must lie in (0, 360]")

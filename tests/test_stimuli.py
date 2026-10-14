@@ -104,6 +104,16 @@ def test_a_single_sweep_axis_still_builds() -> None:
     assert build_apertures(config, "bar").n_frames == 40
 
 
+@pytest.mark.parametrize("directions", [(0, 180), (0, 180, 90), [0, 180, 90]])
+def test_opposite_directions_keep_unique_frame_identifiers(directions) -> None:
+    config = StimulusConfig(resolution=RESOLUTION, n_steps=8, directions=directions)
+    sequence = build_apertures(config, "bar")
+
+    assert sequence.n_frames == len(directions) * config.n_steps
+    assert len(np.unique(sequence.frame_index)) == sequence.n_frames
+    assert (sequence.group[: 2 * config.n_steps] == 0).all()
+
+
 def test_distinct_axes_get_distinct_groups(stimulus_config) -> None:
     sequence = build_apertures(stimulus_config, "bar")
 

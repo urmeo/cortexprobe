@@ -54,6 +54,31 @@ def test_stimulus_derived_quantities() -> None:
     assert config.ring_thickness_px == pytest.approx(8.0)
 
 
+@pytest.mark.parametrize("directions", [(0, 0, 90), (0, 90, 0), [0, 0, 90], [0, 90, 0]])
+def test_repeated_sweep_directions_are_rejected(directions) -> None:
+    with pytest.raises(ConfigError, match="directions must be unique"):
+        StimulusConfig(directions=directions)
+
+
+def test_json_configuration_rejects_repeated_directions(tmp_path) -> None:
+    path = tmp_path / "run.json"
+    path.write_text(json.dumps({"stimulus": {"directions": [0, 90, 0]}}), encoding="utf-8")
+
+    with pytest.raises(ConfigError, match="directions must be unique"):
+        RunConfig.load(path)
+
+
+def test_direction_lists_are_copied_to_immutable_tuples() -> None:
+    directions = [0, 90]
+    config = StimulusConfig(directions=directions)
+
+    directions.append(0)
+
+    assert config.directions == (0, 90)
+    assert config == StimulusConfig(directions=(0, 90))
+    assert config.n_bar_frames == 2 * config.n_steps
+
+
 @pytest.mark.parametrize(
     ("overrides", "message"),
     [

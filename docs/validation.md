@@ -143,10 +143,10 @@ them without remeasuring runtime.
   `fold_r2` for individual retained scores.
 - Standard errors use a local Jacobian approximation. The implementation uses
   the number of distinct aperture masks minus five as residual degrees of
-  freedom; repeated masks do not increase this count. This is a conservative
-  policy when repetitions have fresh independent response noise. Singular fits
-  have undefined errors. Intervals use a Student-t critical value and assume
-  local linearity and approximately Gaussian residuals.
+  freedom; repeated masks and changes in zero sign do not increase this count.
+  This is a conservative policy when repetitions have fresh independent response
+  noise. Singular fits have undefined errors. Intervals use a Student-t critical
+  value and assume local linearity and approximately Gaussian residuals.
 - Gaussian weights use continuous unit-volume normalization. A finite grid can
   truncate their mass, especially near an edge. Sigma must be at least one
   pixel; the fitter also requires at least 99% of the centered Gaussian's

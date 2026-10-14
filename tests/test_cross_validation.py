@@ -89,6 +89,22 @@ def test_validation_uses_the_same_aperture_snapshot_for_training_and_scoring(
     assert min(result.fold_r2) > 0.99
 
 
+def test_public_apertures_cannot_change_validation_stimuli(validator, apertures) -> None:
+    with pytest.raises(ValueError, match="read-only"):
+        validator.apertures[0] = 0.0
+    with pytest.raises(ValueError, match="read-only"):
+        validator.apertures *= 2.0
+    with pytest.raises(ValueError, match="WRITEABLE"):
+        validator.apertures.setflags(write=True)
+    with pytest.raises(AttributeError):
+        validator.apertures = apertures.copy()
+
+    exposed = validator.apertures
+    exposed.shape = (len(apertures), -1)
+
+    assert np.array_equal(validator.apertures, apertures)
+
+
 def test_real_signal_generalises(validator, grid, apertures) -> None:
     result = validator.validate_unit(synthesise(grid, apertures, TRUTH, noise=0.3, seed=9))
 

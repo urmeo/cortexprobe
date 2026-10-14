@@ -144,11 +144,11 @@ def _even_at_least(value: float) -> int:
 def _count_distinct_frames(apertures: FloatArray) -> int:
     """Count distinct aperture masks for residual degrees of freedom.
 
-    Duplicate masks count once. Independent noise in repeated measurements can add
+    Duplicate masks, including signed-zero copies, count once. Independent noise can add
     information, which this conservative count does not model.
     """
     flat = apertures.reshape(len(apertures), -1)
-    return len({row.tobytes() for row in flat})
+    return len({np.where(row == 0.0, 0.0, row).tobytes() for row in flat})
 
 
 def _standard_errors(
@@ -210,7 +210,8 @@ class PRFFitter:
         if not np.isfinite(apertures).all():
             raise ValueError("apertures must be finite; found NaN or inf")
         self.grid = grid
-        self.apertures = apertures.astype(np.float64, copy=True)
+        self._apertures = apertures.astype(np.float64, copy=True)
+        self._apertures.setflags(write=False)
         self.config = config
         self._check_sigma_ceiling()
         self.n_independent_frames = _count_distinct_frames(self.apertures)
@@ -234,6 +235,11 @@ class PRFFitter:
                 f"{math.floor(self.grid.resolution / RESOLUTION_PER_SIGMA)} px, or raise the "
                 f"grid resolution to about {_even_at_least(sigma_high * RESOLUTION_PER_SIGMA)} px."
             )
+
+    @property
+    def apertures(self) -> FloatArray:
+        """Read-only stimulus snapshot used by cached and refined predictions."""
+        return self._apertures.view()
 
     @property
     def n_frames(self) -> int:

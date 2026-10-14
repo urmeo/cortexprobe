@@ -117,6 +117,22 @@ def test_fitter_keeps_cached_predictions_aligned_after_caller_mutates_apertures(
     assert (fit.x0, fit.y0, fit.sigma) == pytest.approx((12.0, 8.0, 5.0), abs=0.01)
 
 
+def test_public_apertures_cannot_invalidate_cached_predictions(fitter, apertures) -> None:
+    with pytest.raises(ValueError, match="read-only"):
+        fitter.apertures[0] = 0.0
+    with pytest.raises(ValueError, match="read-only"):
+        fitter.apertures *= 2.0
+    with pytest.raises(ValueError, match="WRITEABLE"):
+        fitter.apertures.setflags(write=True)
+    with pytest.raises(AttributeError):
+        fitter.apertures = apertures.copy()
+
+    exposed = fitter.apertures
+    exposed.shape = (fitter.n_frames, -1)
+
+    assert np.array_equal(fitter.apertures, apertures)
+
+
 def test_zero_response_is_not_fitted(fitter) -> None:
     assert not fitter.fit_unit(np.zeros(fitter.n_frames)).accepted
 

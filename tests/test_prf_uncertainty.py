@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 
 from cortexprobe.config import StimulusConfig
-from cortexprobe.prf.fit import PRFFitter, UnitFit, _standard_errors
+from cortexprobe.prf.fit import PRFFitter, UnitFit, _count_distinct_frames, _standard_errors
 from cortexprobe.stimuli import build_apertures
 
 from .conftest import RESOLUTION, synthesise
@@ -119,12 +119,18 @@ def test_invalid_confidence_level_raises(fitter, grid, apertures) -> None:
         fit.confidence_interval("x0", level=1.5)
 
 
-def test_duplicate_frames_do_not_shrink_the_error_bars(grid, apertures, fit_config) -> None:
+@pytest.mark.parametrize("signed_zeros", [False, True])
+def test_duplicate_frames_do_not_shrink_the_error_bars(
+    grid, apertures, fit_config, signed_zeros
+) -> None:
     """Duplicate data, rather than independent repeated measurements, preserve covariance."""
     response = synthesise(grid, apertures, TRUTH, noise=0.2, seed=5)
+    duplicates = apertures.copy()
+    if signed_zeros:
+        duplicates[duplicates == 0.0] = -0.0
 
     once = PRFFitter(grid, apertures, fit_config)
-    twice = PRFFitter(grid, np.concatenate([apertures, apertures]), fit_config)
+    twice = PRFFitter(grid, np.concatenate([apertures, duplicates]), fit_config)
 
     single = once.fit_unit(response)
     repeated = twice.fit_unit(np.concatenate([response, response]))
@@ -133,7 +139,33 @@ def test_duplicate_frames_do_not_shrink_the_error_bars(grid, apertures, fit_conf
     assert twice.n_independent_frames == once.n_independent_frames
     assert repeated.dof == single.dof
     assert repeated.se_x0 == pytest.approx(single.se_x0, rel=1e-6)
+    assert repeated.se_y0 == pytest.approx(single.se_y0, rel=1e-6)
     assert repeated.se_sigma == pytest.approx(single.se_sigma, rel=1e-6)
+
+
+def test_signed_zero_copies_count_as_six_distinct_masks() -> None:
+    masks = np.zeros((6, 2, 3))
+    masks[:, 0, 0] = np.arange(1, 7) / 7.0
+    duplicates = masks.copy()
+    duplicates[duplicates == 0.0] = -0.0
+    frames = np.concatenate([masks, duplicates])
+    original_bytes = frames.tobytes()
+
+    assert _count_distinct_frames(frames) == 6
+    assert frames.tobytes() == original_bytes
+
+
+def test_distinct_nonzero_float_values_remain_distinct_masks() -> None:
+    frames = np.array(
+        [
+            [[0.0, 0.25]],
+            [[-0.0, 0.25]],
+            [[np.nextafter(0.0, 1.0), 0.25]],
+            [[0.0, np.nextafter(0.25, 1.0)]],
+        ]
+    )
+
+    assert _count_distinct_frames(frames) == 3
 
 
 def test_degrees_of_freedom_count_distinct_frames(grid, fit_config) -> None:

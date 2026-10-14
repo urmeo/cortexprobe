@@ -69,6 +69,12 @@ print(
 Fit parameters are `x0`, `y0`, and `sigma` for geometry, `beta` for amplitude,
 and `baseline` for the offset.
 
+Fitters and validators copy their aperture inputs and expose read-only snapshots.
+Create a new fitter or validator to use different masks.
+
+Bar directions must be unique integer degrees in `[0, 360)`. Opposite directions
+remain separate sweeps and share a validation group.
+
 Aperture generation prunes similar frames across groups. Prepare responses for
 the retained `sequence.n_frames`. Externally supplied apertures are not pruned
 automatically. Fitting needs more than five frames; cross-validation skips folds

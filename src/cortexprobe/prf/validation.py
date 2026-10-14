@@ -116,7 +116,6 @@ class CrossValidator:
             raise ValueError("groups must have one group per stimulus frame")
 
         self._full = PRFFitter(grid, apertures, config)
-        self.apertures = self._full.apertures
         self._folds: list[tuple[IntArray, IntArray, PRFFitter]] = []
         for train, test in self.splitter.splits():
             if len(train) <= N_PARAMETERS:
@@ -124,6 +123,11 @@ class CrossValidator:
             self._folds.append((train, test, PRFFitter(grid, self.apertures[train], config)))
         if not self._folds:
             raise ValueError("no fold retains enough frames to fit a pRF")
+
+    @property
+    def apertures(self) -> FloatArray:
+        """Read-only stimulus snapshot shared by full-data fitting and held-out scoring."""
+        return self._full.apertures
 
     def validate_unit(self, response: FloatArray) -> CrossValidatedFit:
         response = np.asarray(response, dtype=np.float64)
