@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import json
 import math
+import os
+import subprocess
+import sys
 
 import pytest
 
@@ -182,6 +185,36 @@ def test_saved_configuration_is_readable_json(tmp_path) -> None:
 
     assert set(payload) == {"stimulus", "model", "fit", "seed"}
     assert path.read_text().endswith("\n")
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="The C locale selects ASCII on POSIX.")
+def test_utf8_configuration_loads_and_resaves_in_ascii_locale(tmp_path) -> None:
+    config = RunConfig(model=ModelConfig(name="modèle"))
+    source = tmp_path / "source.json"
+    saved = tmp_path / "saved.json"
+    source.write_text(json.dumps(config.to_dict(), ensure_ascii=False), encoding="utf-8")
+    command = """
+import locale
+import sys
+from pathlib import Path
+from cortexprobe import RunConfig
+
+assert locale.getpreferredencoding(False).lower() in ("ascii", "us-ascii", "ansi_x3.4-1968")
+source, saved = map(Path, sys.argv[1:3])
+config = RunConfig.load(source)
+assert config.digest() == sys.argv[3]
+config.save(saved)
+assert RunConfig.load(saved).digest() == config.digest()
+"""
+    environment = dict(os.environ, LC_ALL="C", PYTHONCOERCECLOCALE="0", PYTHONUTF8="0")
+    result = subprocess.run(
+        [sys.executable, "-c", command, str(source), str(saved), config.digest()],
+        env=environment,
+        capture_output=True,
+        timeout=10,
+    )
+    assert result.returncode == 0, result.stderr.decode("utf-8", errors="replace")
+    assert RunConfig.load(saved) == config
 
 
 @pytest.mark.parametrize("bad", [math.nan, math.inf, -math.inf])

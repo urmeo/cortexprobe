@@ -232,8 +232,10 @@ class RunConfig(ConfigBase):
         return hashlib.sha256(self.to_json().encode("utf-8")).hexdigest()
 
     def save(self, path: Path) -> None:
-        path.write_text(json.dumps(self.to_dict(), sort_keys=True, indent=2) + "\n")
+        path.write_text(
+            json.dumps(self.to_dict(), sort_keys=True, indent=2) + "\n", encoding="utf-8"
+        )
 
     @classmethod
     def load(cls, path: Path) -> RunConfig:
-        return cls.from_dict(json.loads(path.read_text()))
+        return cls.from_dict(json.loads(path.read_text(encoding="utf-8")))
