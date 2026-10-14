@@ -72,10 +72,10 @@ class GaussianReceptiveField(ReceptiveField):
     def weights(self, grid: Grid) -> FloatArray:
         """Sample a Gaussian whose continuous integral is one.
 
-        Finite grids truncate its mass, particularly near an edge. The fitter checks the
-        centered field at the sigma ceiling; this does not guarantee mass at other centers.
-        Unit volume defines the amplitude convention. A free fitted beta absorbs the scaling
-        between unit-volume and unit-peak weights, so this choice does not force a size trend.
+        Finite grids truncate mass, especially near an edge. The fitter checks only the
+        centered field at the sigma ceiling. Unit volume sets the amplitude convention;
+        free beta absorbs the scaling to unit-peak weights, so normalization does not force
+        a size trend.
         """
         dx = grid.x - self.x0
         dy = grid.y - self.y0

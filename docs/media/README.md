@@ -1,9 +1,8 @@
 # Videos
 
-These two 10-second, silent videos show the synthetic workflow. The README uses
-animated GIF previews that open videos with playback controls. Both clips use the
-same configuration and known field as the response-curve example; they add no
-independent evaluation result.
+Two 10-second, silent videos use the response-curve example's configuration and
+known field. They add no independent evaluation result. README GIF previews open
+the videos with playback controls.
 
 ## Apertures and responses
 
@@ -14,12 +13,10 @@ independent evaluation result.
 
 [Download MP4](aperture-response.mp4) · [Animated preview](aperture-response.gif) · [Still image](aperture-response.png)
 
-The upper panels show aperture masks with the known Gaussian's center and
-one-sigma outline. The lower panels show the clean response and its value at the
-current retained frame.
-All three designs use a 64 × 64 pixel grid and the same field: center `(12, 8)`
-pixels, sigma `5` pixels. The response is `3 × aperture–field overlap + 0.5`,
-with no added noise.
+Upper panels show masks with the known Gaussian's center and one-sigma outline;
+lower panels show the clean response curve and value at each retained frame.
+All designs use a 64 × 64 pixel grid, center `(12, 8)` pixels, and sigma `5` pixels. The response is
+`3 × aperture–field overlap + 0.5`, with no added noise.
 
 | Design | Retained frames | Validation groups |
 |---|---:|---:|
@@ -40,24 +37,22 @@ progress; it does not imply shared acquisition times or equal frame counts.
 
 [Download MP4](grouped-validation.mp4) · [Animated preview](grouped-validation.gif) · [Still image](grouped-validation.png)
 
-This demonstration uses the 80 bar frames and the same known field, amplitude,
-and baseline as the first video. Gaussian noise has standard deviation equal to
-20% of the clean response's standard deviation, using seed 7.
+The 80 bar frames use the same field, amplitude, and baseline, with Gaussian
+noise at 20% of the clean response's standard deviation, using seed 7.
 
-Each of four folds fits only the other three groups. Geometry, amplitude, and
-baseline stay fixed while the video steps through predictions on the excluded group.
-The animation does not show optimizer iterations or repeated fits to each new
-test frame. Displaying held-out observations does not feed them to the fit.
+Each of four folds fits the other three groups. Geometry, amplitude, and baseline
+stay fixed during predictions on the excluded group. Frames show predictions,
+not optimizer iterations or new fits. Held-out observations never enter the fit.
 
-The fold scores summarize this one synthetic response. Their mean uses finite
-fold R² values, rather than one R² over pooled predictions.
+Scores cover this one synthetic response. The mean uses finite fold R² values,
+rather than one R² over pooled predictions.
 See [Pipeline](../pipeline.md) for the fitting procedure and
 [Validation](../validation.md) for the recorded experiments and their limits.
 
 ## Reproduce
 
-From the repository root, install the plotting extra and make FFmpeg available
-on your command path. FFmpeg needs its H.264 encoder, `libx264`.
+From the repository root, install the plotting extra and add FFmpeg with its
+H.264 encoder, `libx264`, to your command path.
 
 ```sh
 python -m pip install -e '.[viz]'
@@ -70,5 +65,4 @@ FFmpeg is only needed to regenerate the media. Fitting and viewing the videos
 do not require it. Encoded file bytes can differ across FFmpeg and Matplotlib
 versions even when the underlying masks and predictions match.
 
-Both clips contain visible labels and have no audio. The videos use manual
-playback controls and do not autoplay. GIF previews animate in the README.
+Both clips have visible labels and manual playback controls, without autoplay.

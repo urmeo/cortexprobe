@@ -117,7 +117,6 @@ def test_a_field_far_outside_the_grid_contributes_nothing() -> None:
 
 
 def test_prediction_is_linear_in_the_receptive_field() -> None:
-    """Weighted fields produce the same weighted sum of predictions."""
     grid = Grid(32)
     apertures = np.random.default_rng(2).random((8, *grid.shape))
     first = GaussianReceptiveField(3.0, 3.0, 2.0).weights(grid)

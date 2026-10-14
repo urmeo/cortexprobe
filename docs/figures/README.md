@@ -1,9 +1,7 @@
 # Figures
 
-The pipeline starts with matched frames, then separates the field estimate
-from held-out prediction tests. Read each path from top to bottom.
 The editable [SVG](pipeline.svg), [PNG preview](pipeline.png), and responsive
-HTML in the documentation show the same workflow. Keep them in sync.
+HTML in the documentation share the pipeline. Update them together.
 
 The other 11 figures are scientific plots generated with Matplotlib from the
 committed configuration, recorded tables, and stated synthetic demonstrations.
@@ -14,7 +12,7 @@ python scripts/generate_validation_report.py --check
 python scripts/generate_figures.py
 ```
 
-These commands leave the pipeline diagram unchanged.
+These commands do not regenerate the pipeline.
 
 | Figure | What it shows | Basis |
 |---|---|---|
@@ -35,5 +33,4 @@ See [Validation](../validation.md) for experiment conditions, uncertainty
 assumptions, and provenance, or [Pipeline](../pipeline.md) for the fitting steps.
 Autocorrelation curves describe the noise inputs, not model fit quality.
 
-[Videos](../media/) show aperture movement and held-out prediction, with animated
-previews, playback controls, and the full demonstration conditions.
+[Videos](../media/) show aperture movement and held-out prediction.

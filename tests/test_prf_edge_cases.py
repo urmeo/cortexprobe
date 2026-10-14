@@ -72,7 +72,6 @@ def test_recovers_largest_admissible_sigma(grid, apertures) -> None:
 
 
 def test_sigma_outside_search_range_is_flagged_at_bound(grid, apertures) -> None:
-    """A pRF wider than the search allows must be reported as pinned, not as a measurement."""
     config = FitConfig(grid_size=8, sigma_bounds=(1.0, 6.0))
     fitter = PRFFitter(grid, apertures, config)
 
@@ -137,7 +136,6 @@ def test_receptive_field_far_outside_field_is_finite(grid) -> None:
 
 
 def test_a_clean_fit_to_noise_converges_but_is_not_accepted(fitter) -> None:
-    """Optimizer convergence alone does not meet the acceptance criteria."""
     response = np.random.default_rng(11).normal(size=fitter.n_frames)
 
     fit = fitter.fit_unit(response)
@@ -160,7 +158,6 @@ def test_sigma_pinned_at_the_ceiling_is_not_accepted(grid, apertures) -> None:
 
 
 def test_a_centre_at_the_field_edge_is_still_accepted(grid, apertures) -> None:
-    """A center bound does not disqualify a fit with an unpinned sigma."""
     fitter = PRFFitter(grid, apertures, FitConfig(grid_size=10, sigma_bounds=(1.0, 10.0)))
 
     fit = fitter.fit_unit(synthesise(grid, apertures, (32.0, 0.0, 4.0)))
@@ -189,7 +186,6 @@ def test_at_bound_is_the_disjunction_of_the_three_flags() -> None:
 
 
 def test_a_fit_without_a_threshold_is_never_accepted() -> None:
-    """A manually constructed fit needs an explicit acceptance threshold."""
     fit = UnitFit(0.0, 0.0, 1.0, 1.0, 0.0, r2=1.0, converged=True, n_fev=1)
 
     assert fit.converged
@@ -197,11 +193,7 @@ def test_a_fit_without_a_threshold_is_never_accepted() -> None:
 
 
 def test_a_suppressed_unit_is_not_accepted_as_a_prf(fitter, grid, apertures) -> None:
-    """A response that falls where the aperture covers is suppression, not a receptive field.
-
-    The amplitude is solved by unconstrained least squares, so this fits perfectly with a
-    negative beta at exactly the right location. Only the sign distinguishes it.
-    """
+    """Unconstrained amplitude can fit suppression perfectly; negative beta rejects it."""
     driven = synthesise(grid, apertures, (12.0, 8.0, 5.0), beta=3.0, baseline=0.5)
     suppressed = synthesise(grid, apertures, (12.0, 8.0, 5.0), beta=-3.0, baseline=10.0)
 
@@ -242,7 +234,6 @@ def test_unit_volume_survives_across_the_admissible_range(grid, sigma) -> None:
 
 
 def test_unit_volume_is_lost_above_the_admissible_range(grid) -> None:
-    """Pins the reason the ceiling exists, so removing the guard fails a test."""
     weights = GaussianReceptiveField(0.0, 0.0, 20.0).weights(grid)
 
     assert weights[grid.field_mask].sum() < MIN_ON_GRID_VOLUME
@@ -250,7 +241,6 @@ def test_unit_volume_is_lost_above_the_admissible_range(grid) -> None:
 
 @pytest.mark.parametrize("scale", [1e-200, 1.0, 1e200])
 def test_a_two_lobed_unit_is_flagged_as_misspecified(fitter, grid, apertures, scale) -> None:
-    """A two-lobe response leaves structure after a single-Gaussian fit."""
     lobes = GaussianReceptiveField(14.0, 0.0, 3.0).weights(grid) + GaussianReceptiveField(
         -14.0, 0.0, 3.0
     ).weights(grid)
@@ -308,7 +298,6 @@ def test_misspecification_separates_single_from_two_lobed_units(fitter, grid, ap
 
 
 def test_misspecification_does_not_change_acceptance(fitter, grid, apertures) -> None:
-    """The diagnostic is reported, not enforced; downstream analysis states its own cut."""
     lobes = GaussianReceptiveField(14.0, 0.0, 3.0).weights(grid) + GaussianReceptiveField(
         -14.0, 0.0, 3.0
     ).weights(grid)
@@ -366,7 +355,6 @@ def test_standard_errors_are_undefined_without_degrees_of_freedom() -> None:
 
 
 def test_standard_errors_are_undefined_when_the_cost_is_not_finite() -> None:
-    """Undefined errors are reported as undefined, never as a number."""
     with np.errstate(invalid="ignore"):
         errors = _standard_errors(np.zeros((20, 3)), float("inf"), n_independent=20)
 
@@ -403,8 +391,6 @@ def test_a_stimulus_with_no_distinguishable_frames_reports_no_second_field() -> 
 def test_an_optimiser_failure_is_reported_as_an_unfitted_unit(
     monkeypatch, fitter, grid, apertures
 ) -> None:
-    """A pathological unit must not propagate a numerical exception to the caller."""
-
     def explode(*args, **kwargs):
         raise np.linalg.LinAlgError("SVD did not converge")
 
@@ -430,7 +416,6 @@ def test_non_finite_apertures_are_refused(grid) -> None:
 
 
 def test_confidence_interval_rejects_an_unknown_parameter(fitter, grid, apertures) -> None:
-    """Naming a parameter that was never fitted must say so, not raise AttributeError."""
     fit = fitter.fit_unit(synthesise(grid, apertures, (12.0, 8.0, 5.0)))
 
     with pytest.raises(ValueError, match="parameter must be one of"):
@@ -470,12 +455,7 @@ def test_sigma_ceiling_advice_works_at_every_resolution(resolution) -> None:
 
 
 def test_the_sigma_ceiling_error_gives_advice_that_works(grid) -> None:
-    """An error that explains the fix must not suggest one that reproduces the error.
-
-    An earlier message advised raising the resolution to `sigma * 6`, which was itself rejected:
-    the 2-D radial mass within 3 sigma is 0.9889, under the 0.99 tolerance, so the true ratio is
-    about 6.1 rather than 6.
-    """
+    """A radius of 3 sigma retains 0.9889 mass, below 0.99; resolution needs about 6.1 sigma."""
     apertures = np.zeros((20, *grid.shape))
     with pytest.raises(ConfigError) as raised:
         PRFFitter(grid, apertures, FitConfig(grid_size=5, sigma_bounds=(1.0, 20.0)))
@@ -494,7 +474,6 @@ def test_the_sigma_ceiling_error_gives_advice_that_works(grid) -> None:
 
 
 def test_a_sigma_of_exactly_resolution_over_six_is_rejected(grid) -> None:
-    """The resolution/6 rule of thumb is slightly too generous; the guard is the authority."""
     assert RESOLUTION_PER_SIGMA > 6.0
 
     with pytest.raises(ConfigError, match="keeps only"):

@@ -1,10 +1,8 @@
 # Synthetic validation
 
-These experiments test the fitting and validation code on generated responses.
-They do not test a neural network or human data. The tables come from
-[`results/validation.json`](../results/validation.json), using
-[`configs/validation.json`](../configs/validation.json). Each table retains its
-recorded environment, date, and configuration digest.
+Tests use generated responses, without neural networks or human data. Tables use
+[`results/validation.json`](../results/validation.json) and
+[`configs/validation.json`](../configs/validation.json).
 
 The shared setup is a 64 × 64 pixel field, 80 bar frames, four sweep groups,
 and 300 candidate fields. The coarse search uses `grid_size=10`, followed by
@@ -17,11 +15,10 @@ response's standard deviation.
 
 The five known fields have `(x0, y0, sigma)` values `(0, 0, 5)`, `(12, 8, 4)`,
 `(-10, 14, 7)`, `(16, -12, 6)`, and `(-15, -9, 9)`, all in pixels. Each condition
-uses the same noise seed, 7, across these fields. The largest error is the
-largest of these five fits in one noise realization; it is not a worst-case
-bound. The pure-noise check uses 40 independent response columns drawn with
-seed 11. Its rejection count is specific to that draw and threshold. The R²
-values in this table are in-sample scores from fits using all frames.
+uses shared noise seed 7. Reported maxima apply to these five fits in one
+noise realization, not a worst-case bound. The pure-noise check uses 40
+independent response columns with seed 11; its rejection count applies to that
+draw and threshold. R² values are in-sample scores using all frames.
 
 <!-- BEGIN GENERATED: recovery -->
 | Condition | Position error, largest (px) | mean (px) | Sigma error, largest (%) | mean (%) | Minimum R² |
@@ -38,10 +35,10 @@ values in this table are in-sample scores from fits using all frames.
 
 ## Parameter uncertainty
 
-The first table fits the field `(12, 8, 5)` at four noise levels with seed 5.
-The standard error and confidence interval describe `x0`, in pixels. At zero
-noise, residuals reach machine precision and the interval collapses. That row
-shows a numerical floor, not evidence of exact uncertainty calibration.
+The first table fits `(12, 8, 5)` at four noise levels with seed 5. Standard
+errors and confidence intervals describe `x0`, in pixels. At zero noise,
+residuals reach machine precision and the interval collapses: a numerical
+floor, not evidence of exact uncertainty calibration.
 
 Coverage measures how often the nominal 95% interval contains the true `x0`.
 Each cell uses 200 trials, with seeds 1000–1199 reused across noise levels and
@@ -71,8 +68,8 @@ The binomial intervals around coverage use the Wald approximation.
 
 ## Grouped and random splits
 
-The response contains noise only. Each seed is evaluated with both a whole-sweep
-split and a random frame split. White noise is sampled independently per frame.
+Each noise-only response is evaluated with whole-sweep and random frame splits.
+White noise is sampled independently per frame.
 Autocorrelated noise is white noise convolved with a width-3 boxcar using
 `mode="same"`. The random split uses seed 0 and four folds.
 
@@ -95,8 +92,8 @@ random frame split can inflate this score without a receptive-field signal.
 
 ## Runtime
 
-The recorded timings cover fitting and cross-validation after fitter setup.
-They use synthetic fields with 20% noise, amplitude 1, and baseline 0.
+Timings cover fitting and cross-validation after fitter setup, using synthetic
+fields with 20% noise, amplitude 1, and baseline 0.
 Seed 0 samples each center coordinate uniformly within ±70% of the field
 radius and sigma uniformly between 3 and 8 pixels. Cross-validation includes
 four fold fits and a full-data fit. These are measurements from the recorded
@@ -155,17 +152,14 @@ them without remeasuring runtime.
 
 ## Reproduce the report
 
-Install the development dependencies, then check the report:
-
 ```sh
 python -m pip install -e '.[dev]'
 python scripts/generate_validation_report.py --check
 ```
 
-This recomputes deterministic measurements and checks the tables against the
-numeric record. Float comparisons allow relative error `1e-5` or absolute
-error `1e-6`. The check writes no files. It does not compare figure pixels or
-remeasure hardware timings.
+The check recomputes deterministic measurements and compares the tables with
+the numeric record, allowing relative error `1e-5` or absolute error `1e-6`.
+It writes no files, compares no figure pixels, and preserves hardware timings.
 
 To update measurements after an intentional analysis change:
 
@@ -179,8 +173,8 @@ values and provenance. Use `python scripts/generate_validation_report.py --runti
 to refresh hardware timings explicitly. Review the numeric record, tables, and
 figures together.
 
-The [figure gallery](figures/) also includes seeded examples and supplemental
-diagnostics. These do not add recorded measurements or change their provenance.
+Supplemental [figures](figures/) use seeded examples and diagnostics; they do not
+change the recorded measurements or provenance.
 
 ## References
 

@@ -5,14 +5,13 @@ Estimate the field and test predictions on held-out groups with Python, NumPy,
 and SciPy. **Examples and recorded results are synthetic. No human-data or
 neural-network evaluation.**
 
-[![Prepare matched masks, responses, and groups. Estimate a field from all frames, and separately test each held-out group using training-only fits. Keep all five parameters fixed for prediction; use held-out responses only for scoring.](docs/figures/pipeline.png)](docs/figures/pipeline.png)
+[![Matched masks, responses, and groups feed full-data fitting and separate training fits for held-out validation.](docs/figures/pipeline.png)](docs/figures/pipeline.png)
 
 [Pipeline details](docs/pipeline.md) · [Editable SVG](docs/figures/pipeline.svg) · [Documentation](https://urmeo.github.io/cortexprobe/)
 
 ## Run
 
-Use Python 3.9 or later. Run the example, check the recorded measurements, and
-draw the plots:
+Use Python 3.9 or later.
 
 ```bash
 git clone https://github.com/urmeo/cortexprobe.git
@@ -32,29 +31,24 @@ center=(12.0, 8.0), sigma=5.0, accepted=True
 held-out R²=1.000
 ```
 
-Plots are saved in `docs/figures/`. [Usage](docs/usage.md) explains the inputs,
-coordinates, bounds, and Python API.
+Plots are saved in `docs/figures/`. See [Usage](docs/usage.md) for the Python API.
 
 ## Watch the workflow
 
-**Apertures and responses.** Moving bar, wedge, and ring masks sample a known
-Gaussian field. The clean response follows their overlap. Each sequence uses its
-own retained frames; playback shows sequence progress.
+**Apertures and responses.** Bar, wedge, and ring masks sample a known Gaussian field.
 
 [![Animated bar, wedge, and ring apertures with their clean response curves](docs/media/aperture-response.gif)](https://urmeo.github.io/cortexprobe/docs/media/#apertures-and-responses)
 
 [Watch the video](https://urmeo.github.io/cortexprobe/docs/media/#apertures-and-responses) · [MP4 file](docs/media/aperture-response.mp4)
 
-**Held-out prediction.** Four separate training-fold fits predict the excluded
-group. This uses the field `(12, 8, 5)`, 20% Gaussian noise, and seed 7. Parameters
-stay fixed during held-out prediction.
+**Held-out prediction.** Four training-fold fits predict their excluded groups
+without refitting. Synthetic response: field `(12, 8, 5)`, 20% Gaussian noise, seed 7.
 
 [![Animated training groups, excluded observations, and predictions from separately fitted fold models](docs/media/grouped-validation.gif)](https://urmeo.github.io/cortexprobe/docs/media/#held-out-prediction)
 
 [Watch the video](https://urmeo.github.io/cortexprobe/docs/media/#held-out-prediction) · [MP4 file](docs/media/grouped-validation.mp4)
 
-See [video conditions and reproduction](docs/media/) for frame counts and
-instructions to regenerate the clips with FFmpeg.
+[Video conditions and reproduction](docs/media/)
 
 ## From aperture to response
 
@@ -87,9 +81,8 @@ noiseless standard error is a numerical floor.
 
 ## Autocorrelation and validation
 
-**Noise curves.** White noise and width-3 moving-average noise are compared over
-seeds 21–40. The autocorrelation plot shows sample curves and the stationary
-reference for that noise generator.
+**Noise curves.** White and width-3 moving-average noise over seeds 21–40,
+with sample autocorrelations and their stationary reference.
 
 [![White and moving-average noise timecourses and autocorrelation curves](docs/figures/noise-autocorrelation.png)](docs/figures/noise-autocorrelation.png)
 
@@ -99,9 +92,8 @@ negative. A higher score from a random split can occur without a field signal.
 
 [![Grouped and random-frame held-out scores on noise-only responses](docs/figures/leakage.png)](docs/figures/leakage.png)
 
-**Frame overlap.** This supplemental diagnostic compares cross-group cosine
-similarity before and after grouping return sweeps together and pruning similar
-frames. Aperture overlap is one source of dependence to check.
+**Frame overlap.** Cross-group cosine similarity before and after grouping
+opposite sweeps and pruning similar frames. This checks mask overlap only.
 
 [![Cross-group frame similarity before and after grouping and pruning](docs/figures/fold-leakage.png)](docs/figures/fold-leakage.png)
 
@@ -109,28 +101,24 @@ frames. Aperture overlap is one source of dependence to check.
 
 **Finite grid.** Sigma must be at least one pixel. The upper bound must retain
 at least 99% of a centered Gaussian's sampled mass inside the circular field.
-Fields near an edge can still lose mass. The plot illustrates these grid limits.
+Fields near an edge can still lose mass.
 
 [![Sampled Gaussian mass and the effects of widths below one pixel](docs/figures/sigma-guard.png)](docs/figures/sigma-guard.png)
 
 **Multiple lobes.** A single Gaussian can fit only part of a two-lobe response
-and still pass the acceptance rules. The supplemental second-field diagnostic
-measures remaining structure; it has no universal rejection threshold.
+and still pass the acceptance rules. The second-field diagnostic measures
+remaining structure; it has no universal rejection threshold.
 
 [![Single-Gaussian fit to two lobes and residual second-field gain](docs/figures/misspecification.png)](docs/figures/misspecification.png)
 
 ## Recorded runtime
 
-These timings cover 1, 10, and 100 units on the recorded machine. Cross-validation
-includes four training-fold fits and a full-data fit. The measurements are
-hardware-specific; the report check preserves them without remeasuring time.
+Hardware-specific timings for 1, 10, and 100 units. Cross-validation includes
+four training-fold fits and a full-data fit. The report check does not remeasure time.
 
 [![Recorded fitting time per unit and cross-validation overhead](docs/figures/runtime.png)](docs/figures/runtime.png)
 
-[Validation tables and conditions](docs/validation.md) retain all numeric results,
-seeds, uncertainty assumptions, historical runtimes, and limits.
-[Figure details](docs/figures/) distinguish recorded results from seeded examples
-and supplemental diagnostics.
+[Validation tables and conditions](docs/validation.md) · [Figure details](docs/figures/)
 
 ## References
 

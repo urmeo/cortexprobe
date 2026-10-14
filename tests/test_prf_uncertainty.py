@@ -120,10 +120,7 @@ def test_invalid_confidence_level_raises(fitter, grid, apertures) -> None:
 
 
 def test_duplicate_frames_do_not_shrink_the_error_bars(grid, apertures, fit_config) -> None:
-    """Copying both apertures and responses preserves the estimated covariance.
-
-    This checks duplicated data, not repeated measurements with independent noise.
-    """
+    """Duplicate data, rather than independent repeated measurements, preserve covariance."""
     response = synthesise(grid, apertures, TRUTH, noise=0.2, seed=5)
 
     once = PRFFitter(grid, apertures, fit_config)

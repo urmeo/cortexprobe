@@ -1,28 +1,22 @@
 # Pipeline
 
-CortexProbe fits a Gaussian receptive field and checks its predictions on held-out
-groups. The examples and recorded experiments use synthetic responses. The
-full-data estimate and validation scores come from separate fits to shared inputs.
+CortexProbe fits Gaussian receptive fields and scores held-out groups. The
+examples and recorded experiments use synthetic responses.
 
 [![Prepare matched frames, then follow two separate paths: estimate a field from all frames, and test independent training fits using held-out masks for prediction and held-out responses for scoring.](figures/pipeline.png)](figures/pipeline.png)
 
 [Editable SVG](figures/pipeline.svg) · [Figure guide](figures/) · [Videos](media/)
 
-Start with the matched frames at the top. Follow the two paths downward:
-estimate the field from all retained frames, and test predictions by holding out
-one group at a time. Each path fits its own models.
-
 ## Prepare the inputs
 
-Build bar, wedge, or ring aperture masks on a circular pixel grid. Assign a group
-to each frame. Return bar sweeps share an axis group, and the generator prunes
+Build bar, wedge, or ring aperture masks on a circular pixel grid, with one group
+label per frame. Return bar sweeps share an axis group. The generator prunes
 frames whose cross-group cosine similarity exceeds the configured threshold.
-This checks aperture overlap; other forms of dependence may remain.
+This checks aperture overlap; other dependence may remain.
 
-For a synthetic response, sum a known Gaussian's weights inside each aperture,
-apply amplitude and baseline, then optionally add seeded noise. Generate these
-responses from the retained masks so their frames remain aligned. The recorded
-experiments also use noise-only responses as a negative control.
+For synthetic responses, sum a known Gaussian's weights inside each retained
+aperture, apply amplitude and baseline, then optionally add seeded noise.
+The recorded experiments use noise-only responses as a negative control.
 
 | Input | Meaning |
 |---|---|
@@ -33,13 +27,12 @@ experiments also use noise-only responses as a negative control.
 
 The [recorded bar setup](../configs/validation.json) uses a 64 × 64 pixel grid,
 80 frames, four groups, 300 candidate fields, and sigma bounds of 1–10 pixels.
-These counts describe that configuration; other aperture designs can retain
-different numbers of frames after pruning.
+Other aperture designs can retain different numbers of frames after pruning.
 
 ## Fit a field
 
-The same fitting procedure runs on all frames for the field estimate, and on each
-training subset for held-out validation:
+Fit all retained frames for the field estimate and each training subset for
+validation:
 
 1. Cache the response predicted by each candidate Gaussian for those apertures.
 2. Search candidate centers and widths. At each geometry, solve amplitude and
@@ -60,14 +53,11 @@ Candidate predictions and fold fitters are reused across response columns.
 | Full-data estimate | All retained frames | Field parameters, in-sample R², acceptance, and diagnostics |
 | Held-out validation | All groups except the current test group | R² on that held-out group from a separate fitted model |
 
-For each validation fold, hold out one complete group, fit the remaining groups,
-then predict the held-out frames. Geometry, amplitude, and baseline stay fixed
-during this prediction. The full-data estimate supplies no parameters to the
-fold models.
-
-Within each fold, held-out masks enter prediction and held-out responses enter
-scoring. Both bypass the training fit. Repeat the split, fit, prediction, and
-scoring steps for each usable group.
+For each fold, hold out one complete group, fit the remaining groups, then
+predict the held-out frames with geometry, amplitude, and baseline fixed.
+The full-data estimate supplies no parameters to fold models. Held-out masks
+enter prediction; held-out responses enter scoring. Both bypass training.
+Repeat for each usable group.
 
 The reported `cv_r2` is the mean of finite fold R² scores; `cv_r2_sd` is their
 sample standard deviation. The score is not computed from pooled predictions.
@@ -94,10 +84,9 @@ measurements have fresh independent noise.
 ## Inspect and reproduce the results
 
 The recorded experiments check known-field recovery, noise rejection, interval
-coverage, grouped versus random splits, and runtime. Compare fitted and held-out
-response curves, residuals, fold scores, and the supplemental diagnostics.
-The [validation report](validation.md) states the seeds, noise levels, trial
-counts, approximation limits, and measurement provenance.
+coverage, grouped versus random splits, and runtime. The
+[validation report](validation.md) states the seeds, noise levels, trial counts,
+approximation limits, and measurement provenance.
 
 ```sh
 python scripts/generate_validation_report.py --check
@@ -110,7 +99,7 @@ draws the 11 scientific plots and preserves the pipeline SVG and PNG preview.
 The [figure index](figures/) identifies recorded results, seeded examples, and
 supplemental diagnostics.
 
-The implementation lives in
+Implementation:
 [stimuli.py](https://github.com/urmeo/cortexprobe/blob/main/src/cortexprobe/stimuli.py),
 [model.py](https://github.com/urmeo/cortexprobe/blob/main/src/cortexprobe/prf/model.py),
 [fit.py](https://github.com/urmeo/cortexprobe/blob/main/src/cortexprobe/prf/fit.py), and

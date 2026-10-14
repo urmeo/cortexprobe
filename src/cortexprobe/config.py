@@ -33,7 +33,7 @@ def _require_finite(value: float, name: str) -> None:
 
 
 def _restore_tuples(annotation: Any, value: Any) -> Any:
-    """Restore tuples from JSON lists so configuration equality survives a round trip."""
+    """Restore JSON lists to tuples for configuration equality."""
     if get_origin(annotation) is not tuple:
         return value
     if not isinstance(value, (list, tuple)):

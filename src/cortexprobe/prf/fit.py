@@ -141,9 +141,8 @@ def _even_at_least(value: float) -> int:
 def _count_distinct_frames(apertures: FloatArray) -> int:
     """Count distinct aperture masks for residual degrees of freedom.
 
-    Repeated masks do not increase this conservative frame count. Copying both masks and
-    responses repeats Jacobian rows and residuals. Repeated measurements with independent
-    noise can add statistical information, which this count does not model.
+    Duplicate masks count once. Independent noise in repeated measurements can add
+    information, which this conservative count does not model.
     """
     flat = apertures.reshape(len(apertures), -1)
     return len({row.tobytes() for row in flat})
@@ -154,13 +153,10 @@ def _standard_errors(
 ) -> tuple[float, float, float]:
     """Linearised errors for a finite, full-rank three-parameter Jacobian.
 
-    Singular directions are unidentifiable and return undefined errors. A pseudoinverse alone
-    would instead assign zero variance to an unobserved direction.
-
-    ``n_independent`` counts distinct masks; ``cost`` and ``jacobian`` cover all observations.
-    Copying both masks and responses ``k`` times scales ``cost`` and ``J^T J`` by ``k``.
-    The factors cancel, preserving the covariance from the original pairs. This explanation
-    does not apply to repeated masks with independent response noise.
+    Singular directions return undefined errors; a pseudoinverse alone would give them zero
+    variance. ``n_independent`` counts distinct masks; cost and Jacobian use all observations.
+    Copying masks and responses scales cost and ``J^T J`` equally, preserving covariance.
+    This does not apply to repeated masks with independent response noise.
     """
     if (
         jacobian.ndim != 2
@@ -221,8 +217,7 @@ class PRFFitter:
     def _check_sigma_ceiling(self) -> None:
         """Check sampled circular-field mass at the centered sigma ceiling.
 
-        Permitted off-center fields can still be truncated. Free beta absorbs scalar
-        normalization differences; this guard does not establish a size-versus-depth bias.
+        Off-center fields can still lose mass. This guard does not establish size bias.
         """
         _, sigma_high = self.config.sigma_bounds
         weights = GaussianReceptiveField(0.0, 0.0, sigma_high).weights(self.grid)

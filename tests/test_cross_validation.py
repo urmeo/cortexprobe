@@ -97,7 +97,6 @@ def test_real_signal_generalises(validator, grid, apertures) -> None:
 
 
 def test_noise_fails_to_generalise(validator) -> None:
-    """Seeded white noise has lower held-out R² than in-sample R²."""
     response = np.random.default_rng(4).normal(size=len(validator.apertures))
 
     result = validator.validate_unit(response)
@@ -128,7 +127,6 @@ def _score_inflation(validator, random_split, response) -> float:
 def test_random_frame_split_leaks_on_autocorrelated_noise(
     validator, random_split_validator, apertures
 ) -> None:
-    """Check random-split score inflation over 20 seeds of temporally correlated noise."""
     leaks = [
         _score_inflation(
             validator,
@@ -146,7 +144,6 @@ def test_random_frame_split_leaks_on_autocorrelated_noise(
 def test_white_noise_leak_is_indistinguishable_from_zero(
     validator, random_split_validator, apertures
 ) -> None:
-    """Check that the random-split leakage estimate varies around zero for white noise."""
     leaks = [
         _score_inflation(
             validator,
@@ -217,7 +214,6 @@ def test_every_frame_can_be_its_own_group(small_stack) -> None:
 
 
 def test_a_fold_with_too_few_training_frames_is_skipped(small_stack) -> None:
-    """Holding out almost everything leaves too few frames to fit five parameters."""
     grid, apertures, config = small_stack
     groups = np.array([0] * (len(apertures) - 1) + [1])
 
@@ -247,7 +243,6 @@ def test_splitter_length_is_the_group_count(sequence) -> None:
 
 
 def test_an_unfittable_unit_scores_undefined_rather_than_zero(validator) -> None:
-    """A fold that could not be fitted must not contribute a score of zero to the mean."""
     result = validator.validate_unit(np.full(len(validator.apertures), 3.0))
 
     assert np.isnan(result.cv_r2)

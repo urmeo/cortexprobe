@@ -7,8 +7,8 @@ extra for Matplotlib, and install FFmpeg with its libx264 encoder separately::
     python3 scripts/generate_media.py
 
 Each ten-second animation has a 1280x720 H.264 MP4, a looping 960-pixel GIF and a PNG
-poster. Frames stream to FFmpeg; no frame directory is written. Playback shows retained
-sequence frames and held-out predictions, not acquisition time or optimizer iterations.
+poster. Playback shows retained sequence frames and held-out predictions, not acquisition
+time or optimizer iterations.
 """
 
 from __future__ import annotations

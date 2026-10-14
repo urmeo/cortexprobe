@@ -16,13 +16,11 @@ center=(12.0, 8.0), sigma=5.0, accepted=True
 held-out R²=1.000
 ```
 
-The example creates 80 bar-aperture frames, generates a noiseless response from
-a known Gaussian field, and fits its center, width, amplitude, and baseline.
-The held-out score comes from separate models trained on the remaining sweeps.
-`CrossValidatedFit` stores the full-data `fit` and held-out `fold_r2` scores
-separately. Its `cv_r2` is the mean of finite fold scores.
-
-The same steps in Python:
+The example fits center, width, amplitude, and baseline from 80 bar-aperture
+frames and a known Gaussian's noiseless response. Separate models trained on
+the remaining sweeps produce the held-out scores. `CrossValidatedFit` stores
+the full-data `fit` and held-out `fold_r2`. Its `cv_r2` is the mean of finite
+fold scores.
 
 ```python
 from cortexprobe import FitConfig, StimulusConfig
@@ -55,25 +53,25 @@ print(f"held-out R²={validated.cv_r2:.3f}")
 | Group labels | One finite numeric label per frame; at least two groups |
 | Center and sigma | Pixels; origin at the grid center, x rightward, y upward |
 
-`PRFFitter.fit_unit` takes one response per frame. `fit_all` fits one field per
-response column. `CrossValidator.validate_unit` and `validate_all` use the same
-response shapes. The returned fit uses `x0`, `y0`, and `sigma` for geometry,
-`beta` for amplitude, and `baseline` for the offset.
+`PRFFitter.fit_unit` fits one response column; `fit_all` fits each column.
+`CrossValidator.validate_unit` and `validate_all` use the same response shapes.
+Fit parameters are `x0`, `y0`, and `sigma` for geometry, `beta` for amplitude,
+and `baseline` for the offset.
 
-Aperture generation prunes similar frames across groups. Use the retained
-`sequence.n_frames` when preparing responses. Externally supplied apertures do
-not receive this pruning automatically. Fitting needs more than five frames;
-cross-validation skips folds with at most five training frames.
+Aperture generation prunes similar frames across groups. Prepare responses for
+the retained `sequence.n_frames`. Externally supplied apertures are not pruned
+automatically. Fitting needs more than five frames; cross-validation skips folds
+with at most five training frames.
 
 At each trial center and sigma, the fitter solves amplitude and baseline by
 linear least squares. Predictions sum Gaussian weights multiplied by each
 aperture. There is no haemodynamic convolution or conversion to visual degrees.
 
-The example explicitly sets sigma bounds of 1–10 pixels for a 64-pixel grid.
-The default sigma ceiling of 20 pixels fits the default 128-pixel stimulus
-resolution. Sigma must be at least one pixel. The upper bound must retain at
-least 99% of a centered Gaussian's sampled mass in the circular field, roughly
-requiring `sigma <= resolution / 6.1`. Edge fields can still lose mass.
+The example uses sigma bounds of 1–10 pixels for a 64-pixel grid. The default
+ceiling is 20 pixels for the default 128-pixel grid. Sigma must be at least one
+pixel. Its upper bound must retain at least 99% of a centered Gaussian's sampled
+mass in the circular field, roughly requiring `sigma <= resolution / 6.1`.
+Edge fields can still lose mass.
 
 ## Draw the figures
 
@@ -85,18 +83,13 @@ python scripts/generate_validation_report.py --check
 python scripts/generate_figures.py
 ```
 
-The generator reads `configs/validation.json` and the committed numeric record
-in `results/validation.json`. It writes the scientific plots to `docs/figures/`.
-The pipeline has an editable SVG and a PNG preview; see the [figure guide](figures/).
-The response and autocorrelation curves
-are reproducible illustrations with stated seeds; they are separate from the
-recorded tables.
+The generator reads `configs/validation.json` and `results/validation.json`, then
+writes plots to `docs/figures/`. The [figure guide](figures/) includes the
+pipeline's editable SVG and PNG preview. Response and autocorrelation curves
+are seeded illustrations, separate from the recorded tables.
 
-For intentional measurement changes, see
-[the validation report](validation.md#reproduce-the-report).
-
-The [video guide](media/) contains animated demonstrations and instructions for
-regenerating them with FFmpeg.
+See [the validation report](validation.md#reproduce-the-report) to change
+measurements and the [video guide](media/) to regenerate animations with FFmpeg.
 
 ## Limits
 

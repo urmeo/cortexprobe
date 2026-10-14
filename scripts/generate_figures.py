@@ -4,10 +4,7 @@ Coverage and timing panels use results/validation.json; other panels show synthe
 behavior and diagnostics. A matching configuration digest is required. Run the report's
 --check first to verify recorded numbers; it does not compare figure pixels.
 The editable pipeline SVG and PNG preview are maintained separately and preserved here.
-Needs the ``viz`` extra::
-
-    python3 -m pip install -e '.[viz]'
-    python3 scripts/generate_figures.py
+Requires the ``viz`` extra.
 """
 
 from __future__ import annotations
@@ -212,7 +209,7 @@ def figure_fitted_response() -> None:
 
 
 def figure_noise_autocorrelation() -> None:
-    """Describe the existing noise generator with timecourses and lag correlations."""
+    """Plot noise timecourses and lag correlations."""
     n_frames = build_apertures(CONFIG.stimulus, "bar").n_frames
     lags = np.arange(13)
     fig, axes = plt.subplots(1, 2, figsize=(9.6, 3.8))

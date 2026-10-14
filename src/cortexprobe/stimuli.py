@@ -137,9 +137,8 @@ class ApertureGenerator(ABC):
 class BarSweep(ApertureGenerator):
     """A bar moves along each direction, with its long axis perpendicular to travel.
 
-    Groups use sweep axis ``direction % 180``. Symmetric travel makes a 180-degree return
-    sweep duplicate the outbound frames in reverse order. With no haemodynamic convolution,
-    both directions must share a group to keep duplicate stimuli out of opposing folds.
+    Groups use ``direction % 180``. Return sweeps duplicate outbound frames in reverse order.
+    Without haemodynamic convolution, both directions must share a validation group.
     """
 
     kind = "bar"
@@ -152,7 +151,7 @@ class BarSweep(ApertureGenerator):
         grid = self.grid
         half_width = self.config.bar_width_px / 2.0
         travel = np.linspace(-grid.radius, grid.radius, self.config.n_steps)
-        # Keep existing short-sweep labels while reserving enough indices for longer sweeps.
+        # Preserve short-sweep labels without collisions in longer sweeps.
         label_stride = max(1000, self.config.n_steps)
 
         frames: list[BoolArray] = []
