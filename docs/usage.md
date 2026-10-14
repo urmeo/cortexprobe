@@ -13,7 +13,7 @@ Expected output:
 
 ```text
 center=(12.0, 8.0), sigma=5.0, accepted=True
-held-out R²=1.000
+held-out R²=1.000; valid folds=4/4; validation=complete
 ```
 
 The example fits center, width, amplitude, and baseline from 80 bar-aperture
@@ -21,6 +21,12 @@ frames and a known Gaussian's noiseless response. Separate models trained on
 the remaining sweeps produce the held-out scores. `CrossValidatedFit` stores
 the full-data `fit` and held-out `fold_r2`. Its `cv_r2` is the mean of finite
 fold scores.
+
+`n_valid_folds` counts finite scores. `n_folds` counts retained folds, including
+undefined scores; `n_skipped_folds` counts groups with at most five training
+frames. `n_total_folds` includes both retained and skipped folds.
+`validation_complete` is true only when every requested fold has a finite score.
+It describes score coverage, not fit quality or optimizer convergence.
 
 ```python
 from cortexprobe import FitConfig, StimulusConfig
@@ -40,7 +46,12 @@ fit = PRFFitter(grid, apertures, config).fit_unit(response)
 print(f"center=({fit.x0:.1f}, {fit.y0:.1f}), sigma={fit.sigma:.1f}, accepted={fit.accepted}")
 
 validated = CrossValidator(grid, apertures, sequence.group, config).validate_unit(response)
-print(f"held-out R²={validated.cv_r2:.3f}")
+validation_status = "complete" if validated.validation_complete else "incomplete"
+print(
+    f"held-out R²={validated.cv_r2:.3f}; "
+    f"valid folds={validated.n_valid_folds}/{validated.n_total_folds}; "
+    f"validation={validation_status}"
+)
 ```
 
 ## Inputs and coordinates
@@ -62,6 +73,11 @@ Aperture generation prunes similar frames across groups. Prepare responses for
 the retained `sequence.n_frames`. Externally supplied apertures are not pruned
 automatically. Fitting needs more than five frames; cross-validation skips folds
 with at most five training frames.
+
+R² is undefined (`NaN`) for constant targets, including one-frame groups,
+and for nonfinite inputs. This applies to both perfect and wrong predictions
+of a constant target. Failed fits also report `NaN` for in-sample R².
+Undefined fold scores do not contribute to `cv_r2` or `cv_r2_sd`.
 
 At each trial center and sigma, the fitter solves amplitude and baseline by
 linear least squares. Predictions sum Gaussian weights multiplied by each

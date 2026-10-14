@@ -61,10 +61,15 @@ Repeat for each usable group.
 
 The reported `cv_r2` is the mean of finite fold R² scores; `cv_r2_sd` is their
 sample standard deviation. The score is not computed from pooled predictions.
-Folds with at most five training frames are skipped;
-invalid fitted geometry yields an undefined score. Inspect `fold_r2` to see
-which scores contributed. A finite fold fit is scored even if its optimizer
-did not converge.
+Folds with at most five training frames are skipped. Invalid fitted geometry,
+constant held-out targets, and nonfinite inputs yield undefined (`NaN`) scores.
+A finite fold fit is scored even if its optimizer did not converge.
+
+`n_valid_folds` counts finite scores; `n_folds` includes all retained folds,
+and `n_skipped_folds` counts skipped groups. `n_total_folds` includes both.
+`validation_complete` is true only when every requested fold has a finite score.
+Check this coverage alongside the mean and inspect `fold_r2` for each retained
+fold. Complete validation does not imply a good fit or optimizer convergence.
 
 ## Interpret the checks
 

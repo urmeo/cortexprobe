@@ -316,15 +316,33 @@ def test_a_perfect_fit_leaves_no_residual_structure(fitter, grid, apertures) -> 
     assert fit.second_field_r2 < 0.01
 
 
-def test_unfittable_response_reports_no_second_field() -> None:
-    assert np.isnan(UnitFit.failed().second_field_r2)
+def test_unfittable_response_reports_undefined_scores() -> None:
+    fit = UnitFit.failed()
+
+    assert np.isnan(fit.r2)
+    assert np.isnan(fit.second_field_r2)
 
 
 @pytest.mark.parametrize("value", [0.0, 1e-200, 3.0, 1e200])
-def test_r_squared_of_a_constant_response_is_zero(value) -> None:
-    constant = np.full(10, value)
+@pytest.mark.parametrize("n_frames", [1, 10])
+@pytest.mark.parametrize("perfect", [True, False])
+def test_r_squared_of_a_constant_response_is_undefined(value, n_frames, perfect) -> None:
+    constant = np.full(n_frames, value)
+    fitted = constant if perfect else constant + max(abs(value), 1.0)
 
-    assert _r_squared(constant, constant) == 0.0
+    with np.errstate(over="raise", invalid="raise", divide="raise"):
+        assert np.isnan(_r_squared(constant, fitted))
+
+
+@pytest.mark.parametrize("value", [np.nan, np.inf, -np.inf])
+@pytest.mark.parametrize("invalid_target", [True, False])
+def test_r_squared_of_non_finite_inputs_is_undefined(value, invalid_target) -> None:
+    response = np.array([1.0, 2.0, 3.0])
+    fitted = response.copy()
+    (response if invalid_target else fitted)[1] = value
+
+    with np.errstate(over="raise", invalid="raise", divide="raise"):
+        assert np.isnan(_r_squared(response, fitted))
 
 
 @pytest.mark.parametrize("scale", [1e-200, 1.0, 1e200])
@@ -372,11 +390,33 @@ def test_fit_all_rejects_a_non_matrix(fitter) -> None:
         fitter.fit_all(np.zeros(fitter.n_frames))
 
 
-@pytest.mark.parametrize("value", [0.0, 1e-200, 2.0, 1e200])
-def test_second_field_r2_of_a_constant_response_is_zero(fitter, value) -> None:
+@pytest.mark.parametrize("value", [0.0, 1e-200, 2.0, 3.0, 1e200])
+@pytest.mark.parametrize("perfect", [True, False])
+def test_second_field_r2_of_a_constant_response_is_undefined(fitter, value, perfect) -> None:
     constant = np.full(fitter.n_frames, value)
+    fitted = constant if perfect else constant + max(abs(value), 4.0)
 
-    assert fitter._second_field_r2(constant, constant) == 0.0
+    with np.errstate(over="raise", invalid="raise", divide="raise"):
+        assert np.isnan(fitter._second_field_r2(constant, fitted))
+
+
+def test_second_field_r2_is_undefined_for_a_constant_target_and_varying_prediction(fitter) -> None:
+    response = np.full(fitter.n_frames, 3.0)
+    fitted = np.linspace(-7.0, 7.0, fitter.n_frames)
+
+    with np.errstate(over="raise", invalid="raise", divide="raise"):
+        assert np.isnan(fitter._second_field_r2(response, fitted))
+
+
+@pytest.mark.parametrize("value", [np.nan, np.inf, -np.inf])
+@pytest.mark.parametrize("invalid_target", [True, False])
+def test_second_field_r2_of_non_finite_inputs_is_undefined(fitter, value, invalid_target) -> None:
+    response = np.arange(float(fitter.n_frames))
+    fitted = response.copy()
+    (response if invalid_target else fitted)[1] = value
+
+    with np.errstate(over="raise", invalid="raise", divide="raise"):
+        assert np.isnan(fitter._second_field_r2(response, fitted))
 
 
 def test_a_stimulus_with_no_distinguishable_frames_reports_no_second_field() -> None:

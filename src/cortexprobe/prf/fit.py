@@ -66,7 +66,7 @@ class UnitFit:
             sigma=nan,
             beta=nan,
             baseline=nan,
-            r2=0.0,
+            r2=nan,
             converged=False,
             n_fev=0,
         )
@@ -120,13 +120,16 @@ def _solve_amplitude(prediction: FloatArray, response: FloatArray) -> tuple[Floa
 
 
 def _r_squared(response: FloatArray, fitted: FloatArray) -> float:
+    """R², or NaN for constant targets or non-finite inputs."""
+    if not np.isfinite(response).all() or not np.isfinite(fitted).all():
+        return float("nan")
     scale = float(np.max(np.abs(response)))
     if scale == 0.0:
-        return 0.0
+        return float("nan")
     response = response / scale
     total = float(np.sum((response - response.mean()) ** 2))
     if total <= 0.0:
-        return 0.0
+        return float("nan")
     # An excessively poor prediction has a negative infinite score.
     with np.errstate(over="ignore"):
         residual = float(np.sum((response - fitted / scale) ** 2))
@@ -272,15 +275,20 @@ class PRFFitter:
         """Largest incremental R2 from a cached candidate after orthogonalization.
 
         Project candidates against the fitted prediction and intercept; no second search runs.
+        Constant targets and non-finite inputs return NaN.
         """
+        if (
+            not np.isfinite(response).all()
+            or not np.isfinite(fitted).all()
+            or np.all(response == response[0])
+        ):
+            return float("nan")
         scale = max(float(np.max(np.abs(response))), float(np.max(np.abs(fitted))))
-        if scale == 0.0:
-            return 0.0
         response = response / scale
         fitted = fitted / scale
         total = float(np.sum((response - response.mean()) ** 2))
         if total <= 0.0:
-            return 0.0
+            return float("nan")
         residual = response - fitted
         design = np.column_stack([fitted, np.ones_like(fitted)])
         coefficients, *_ = np.linalg.lstsq(design, self._predictions, rcond=None)

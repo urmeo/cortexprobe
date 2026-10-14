@@ -24,6 +24,7 @@ class CrossValidatedFit:
 
     fit: UnitFit
     fold_r2: tuple[float, ...]
+    n_skipped_folds: int = 0
 
     @property
     def cv_r2(self) -> float:
@@ -41,6 +42,21 @@ class CrossValidatedFit:
     def n_folds(self) -> int:
         """Number of retained folds, including folds with undefined scores."""
         return len(self.fold_r2)
+
+    @property
+    def n_total_folds(self) -> int:
+        """Number of requested folds, including folds skipped for insufficient training data."""
+        return self.n_folds + self.n_skipped_folds
+
+    @property
+    def n_valid_folds(self) -> int:
+        """Number of folds with finite held-out R² scores."""
+        return sum(1 for score in self.fold_r2 if np.isfinite(score))
+
+    @property
+    def validation_complete(self) -> bool:
+        """Whether every requested fold has a finite score; this does not imply convergence."""
+        return self.n_total_folds > 0 and self.n_valid_folds == self.n_total_folds
 
     @property
     def optimism(self) -> float:
@@ -117,7 +133,11 @@ class CrossValidator:
         for train, test, fitter in self._folds:
             train_fit = fitter.fit_unit(response[train])
             scores.append(self._score_held_out(train_fit, test, response))
-        return CrossValidatedFit(fit=full_fit, fold_r2=tuple(scores))
+        return CrossValidatedFit(
+            fit=full_fit,
+            fold_r2=tuple(scores),
+            n_skipped_folds=len(self.splitter) - len(self._folds),
+        )
 
     def _score_held_out(self, train_fit: UnitFit, test: IntArray, response: FloatArray) -> float:
         """Apply training geometry, amplitude, and baseline unchanged to held-out frames."""

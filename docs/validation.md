@@ -125,6 +125,9 @@ them without remeasuring runtime.
   threshold, amplitude is positive, and sigma is off its bounds. Center bounds,
   undefined standard errors, and the second-field diagnostic do not change
   acceptance. Acceptance does not require a held-out score.
+- R² is undefined (`NaN`) for constant targets, including one-frame groups,
+  whether predictions match or differ. Nonfinite inputs and failed fits also
+  have undefined R².
 - Aperture generation prunes frames until every cross-group cosine similarity
   is at most the configured threshold. Return sweeps share an axis group.
   `CrossValidator` does not apply this pruning to externally supplied apertures.
@@ -132,8 +135,12 @@ them without remeasuring runtime.
   in external data.
 - Cross-validation holds out whole groups. Geometry, amplitude, and baseline
   fitted on training frames stay fixed during scoring. Folds with at most five
-  training frames are skipped. The mean excludes undefined scores; inspect
-  `fold_r2` to see which folds contributed.
+  training frames are skipped. The mean excludes undefined scores.
+  `n_valid_folds` counts finite scores; `n_folds` counts all retained folds,
+  and `n_skipped_folds` counts skipped groups. `n_total_folds` includes both.
+  `validation_complete` requires a finite score for every requested fold;
+  it describes coverage, not fit quality or optimizer convergence. Inspect
+  `fold_r2` for individual retained scores.
 - Standard errors use a local Jacobian approximation. The implementation uses
   the number of distinct aperture masks minus five as residual degrees of
   freedom; repeated masks do not increase this count. This is a conservative

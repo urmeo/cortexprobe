@@ -21,4 +21,9 @@ fit = PRFFitter(grid, apertures, config).fit_unit(response)
 print(f"center=({fit.x0:.1f}, {fit.y0:.1f}), sigma={fit.sigma:.1f}, accepted={fit.accepted}")
 
 validated = CrossValidator(grid, apertures, sequence.group, config).validate_unit(response)
-print(f"held-out R²={validated.cv_r2:.3f}")
+validation_status = "complete" if validated.validation_complete else "incomplete"
+print(
+    f"held-out R²={validated.cv_r2:.3f}; "
+    f"valid folds={validated.n_valid_folds}/{validated.n_total_folds}; "
+    f"validation={validation_status}"
+)

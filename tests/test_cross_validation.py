@@ -7,9 +7,9 @@ import pytest
 
 from cortexprobe.config import FitConfig, StimulusConfig
 from cortexprobe.geometry import Grid
-from cortexprobe.prf.fit import _r_squared
+from cortexprobe.prf.fit import UnitFit, _r_squared
 from cortexprobe.prf.model import GaussianReceptiveField, predict
-from cortexprobe.prf.validation import CrossValidator, LeaveOneGroupOut
+from cortexprobe.prf.validation import CrossValidatedFit, CrossValidator, LeaveOneGroupOut
 from cortexprobe.stimuli import build_apertures
 
 from .conftest import autocorrelated_noise, synthesise
@@ -94,6 +94,63 @@ def test_real_signal_generalises(validator, grid, apertures) -> None:
 
     assert result.cv_r2 > 0.8
     assert result.n_folds == 4
+    assert result.n_valid_folds == result.n_total_folds == 4
+    assert result.n_skipped_folds == 0
+    assert result.validation_complete
+
+
+def test_one_finite_fold_does_not_report_complete_validation() -> None:
+    result = CrossValidatedFit(UnitFit.failed(), (0.9, np.nan, np.nan, np.nan))
+
+    assert result.cv_r2 == pytest.approx(0.9)
+    assert np.isnan(result.cv_r2_sd)
+    assert result.n_valid_folds == 1
+    assert result.n_folds == result.n_total_folds == 4
+    assert not result.validation_complete
+
+
+def test_finite_negative_scores_still_count_as_complete_validation() -> None:
+    result = CrossValidatedFit(UnitFit.failed(), (1.0, 0.0, -0.5, -2.0))
+
+    assert result.n_valid_folds == result.n_total_folds == 4
+    assert result.validation_complete
+    assert not result.fit.accepted
+
+
+@pytest.mark.parametrize("undefined", [np.nan, np.inf, -np.inf])
+def test_nonfinite_fold_scores_do_not_count_toward_coverage(undefined) -> None:
+    result = CrossValidatedFit(UnitFit.failed(), (0.6, undefined, 0.8, 1.0))
+
+    assert result.cv_r2 == pytest.approx(0.8)
+    assert result.cv_r2_sd == pytest.approx(0.2)
+    assert result.n_valid_folds == 3
+    assert result.n_total_folds == 4
+    assert not result.validation_complete
+
+
+@pytest.mark.parametrize("scores", [(), (np.nan, np.inf, -np.inf)])
+def test_validation_without_finite_fold_scores_is_incomplete(scores) -> None:
+    result = CrossValidatedFit(UnitFit.failed(), scores)
+
+    assert np.isnan(result.cv_r2)
+    assert np.isnan(result.cv_r2_sd)
+    assert result.n_valid_folds == 0
+    assert result.n_total_folds == len(scores)
+    assert not result.validation_complete
+
+
+def test_constant_held_out_target_leaves_validation_incomplete(
+    validator, grid, apertures, sequence
+) -> None:
+    response = synthesise(grid, apertures, TRUTH)
+    response[sequence.group == sequence.group[0]] = 0.5
+
+    result = validator.validate_unit(response)
+
+    assert np.isnan(result.fold_r2[0])
+    assert result.n_valid_folds == 3
+    assert result.n_folds == result.n_total_folds == 4
+    assert not result.validation_complete
 
 
 def test_noise_fails_to_generalise(validator) -> None:
@@ -224,6 +281,20 @@ def test_a_fold_with_too_few_training_frames_is_skipped(small_stack) -> None:
     assert list(test) == [len(apertures) - 1]
 
 
+def test_skipped_training_fold_keeps_finite_validation_incomplete(small_stack) -> None:
+    grid, apertures, config = small_stack
+    groups = np.array([0, 0] + [1] * (len(apertures) - 2))
+    validator = CrossValidator(grid, apertures, groups, config)
+
+    result = validator.validate_unit(synthesise(grid, apertures, (0.0, 0.0, 3.0)))
+
+    assert np.isfinite(result.cv_r2)
+    assert result.n_valid_folds == result.n_folds == 1
+    assert result.n_skipped_folds == 1
+    assert result.n_total_folds == 2
+    assert not result.validation_complete
+
+
 def test_a_split_where_no_fold_is_large_enough_is_rejected(small_stack) -> None:
     grid, apertures, config = small_stack
     half = len(apertures) // 2
@@ -247,6 +318,9 @@ def test_an_unfittable_unit_scores_undefined_rather_than_zero(validator) -> None
 
     assert np.isnan(result.cv_r2)
     assert np.isnan(result.cv_r2_sd)
+    assert result.n_valid_folds == 0
+    assert result.n_folds == result.n_total_folds == 4
+    assert not result.validation_complete
 
 
 def test_validate_all_rejects_a_non_matrix(validator) -> None:

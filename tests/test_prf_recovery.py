@@ -59,7 +59,7 @@ def test_constant_response_is_not_fitted(fitter) -> None:
 
     assert not fit.accepted
     assert not fit.converged
-    assert fit.r2 == 0.0
+    assert np.isnan(fit.r2)
     assert np.isnan(fit.x0)
 
 

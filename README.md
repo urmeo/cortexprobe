@@ -28,7 +28,7 @@ Expected output for the noiseless synthetic example:
 
 ```text
 center=(12.0, 8.0), sigma=5.0, accepted=True
-held-out R²=1.000
+held-out R²=1.000; valid folds=4/4; validation=complete
 ```
 
 Plots are saved in `docs/figures/`. See [Usage](docs/usage.md) for the Python API.
