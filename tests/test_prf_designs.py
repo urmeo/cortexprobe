@@ -71,11 +71,15 @@ def test_recovery_across_receptive_field_sizes(fitter, grid, apertures, sigma) -
     assert abs(fit.sigma - sigma) / sigma < 0.1
 
 
-def test_amplitude_scaling_does_not_change_geometry(fitter, grid, apertures) -> None:
-    """Doubling the response amplitude must not move the fitted pRF."""
-    weak = fitter.fit_unit(synthesise(grid, apertures, TRUTH, beta=1.0))
-    strong = fitter.fit_unit(synthesise(grid, apertures, TRUTH, beta=10.0))
+@pytest.mark.parametrize("amplitude", [1e-5, 10.0])
+def test_amplitude_scaling_does_not_change_geometry(fitter, grid, apertures, amplitude) -> None:
+    reference = fitter.fit_unit(synthesise(grid, apertures, TRUTH, beta=1.0))
+    scaled = fitter.fit_unit(synthesise(grid, apertures, TRUTH, beta=amplitude))
 
-    assert weak.x0 == pytest.approx(strong.x0, abs=1e-6)
-    assert weak.sigma == pytest.approx(strong.sigma, abs=1e-6)
-    assert strong.beta > weak.beta
+    assert scaled.accepted
+    assert (scaled.x0, scaled.y0, scaled.sigma) == pytest.approx(TRUTH, abs=1e-6)
+    assert (scaled.x0, scaled.y0, scaled.sigma) == pytest.approx(
+        (reference.x0, reference.y0, reference.sigma), abs=1e-6
+    )
+    assert scaled.beta == pytest.approx(amplitude, rel=1e-6)
+    assert scaled.baseline == pytest.approx(0.5, abs=1e-10)

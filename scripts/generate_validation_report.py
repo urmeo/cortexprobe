@@ -464,7 +464,7 @@ def main(argv: list[str] | None = None) -> int:
     arguments = parser.parse_args(argv)
 
     document_path = ROOT / "docs" / "validation.md"
-    document = document_path.read_text()
+    document = document_path.read_text(encoding="utf-8")
 
     grid = Grid(CONFIG.stimulus.resolution)
     sequence = build_apertures(CONFIG.stimulus, "bar")
@@ -472,7 +472,9 @@ def main(argv: list[str] | None = None) -> int:
     fitter = PRFFitter(grid, apertures, CONFIG.fit)
 
     previous_path = RESULTS / "validation.json"
-    previous = json.loads(previous_path.read_text()) if previous_path.exists() else {}
+    previous = (
+        json.loads(previous_path.read_text(encoding="utf-8")) if previous_path.exists() else {}
+    )
 
     report: dict[str, Any] = {
         "config_digest": CONFIG.digest(),
@@ -523,9 +525,9 @@ def main(argv: list[str] | None = None) -> int:
     spliced = splice(document, blocks)
 
     RESULTS.mkdir(exist_ok=True)
-    previous_path.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
+    previous_path.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
-    document_path.write_text(spliced)
+    document_path.write_text(spliced, encoding="utf-8")
 
     print(f"wrote {previous_path.relative_to(ROOT)}")
     state = "unchanged" if unchanged else "updated"

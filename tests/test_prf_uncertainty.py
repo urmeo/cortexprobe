@@ -66,6 +66,19 @@ def test_uncertainty_grows_with_noise(fitter, grid, apertures) -> None:
     assert widths == sorted(widths)
 
 
+def test_response_units_do_not_change_geometry_uncertainty(fitter, grid, apertures) -> None:
+    response = synthesise(grid, apertures, TRUTH, noise=0.2, seed=5)
+    reference = fitter.fit_unit(response)
+    scaled = fitter.fit_unit(1e-5 * response + 0.5)
+
+    assert (scaled.se_x0, scaled.se_y0, scaled.se_sigma) == pytest.approx(
+        (reference.se_x0, reference.se_y0, reference.se_sigma), rel=1e-5
+    )
+    assert scaled.r2 == pytest.approx(reference.r2)
+    assert scaled.beta == pytest.approx(1e-5 * reference.beta, rel=1e-6)
+    assert scaled.baseline == pytest.approx(0.5 + 1e-5 * reference.baseline, abs=1e-10)
+
+
 @pytest.mark.parametrize("seed", [1, 2, 3, 4, 5])
 def test_interval_covers_the_generating_parameter(fitter, grid, apertures, seed) -> None:
     fit = fitter.fit_unit(synthesise(grid, apertures, TRUTH, noise=0.2, seed=seed))

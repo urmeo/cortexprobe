@@ -122,7 +122,8 @@ them without remeasuring runtime.
   haemodynamic convolution or conversion to visual degrees.
 - The fitter searches candidate centers and widths, then refines them with
   SciPy's bounded least-squares solver. It solves amplitude and baseline by
-  linear least squares at each trial geometry.
+  linear least squares at each trial geometry. Responses are centered and
+  scaled for optimization. Reported amplitude and baseline retain the input units.
 - A fit is accepted when the optimizer converges, R² meets the configured
   threshold, amplitude is positive, and sigma is off its bounds. Center bounds,
   undefined standard errors, and the second-field diagnostic do not change
@@ -154,10 +155,10 @@ them without remeasuring runtime.
 
 ## Reproduce the report
 
-Install the development and plotting dependencies, then check the report:
+Install the development dependencies, then check the report:
 
 ```sh
-python -m pip install -e '.[dev,viz]'
+python -m pip install -e '.[dev]'
 python scripts/generate_validation_report.py --check
 ```
 

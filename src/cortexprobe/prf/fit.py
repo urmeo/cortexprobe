@@ -302,15 +302,19 @@ class PRFFitter:
         if not np.isfinite(response).all() or np.ptp(response) == 0.0:
             return UnitFit.failed()
 
-        start = self._coarse_search(response)
+        # Keep optimizer tolerances independent of response units and baseline.
+        normalized_response: FloatArray = response / np.max(np.abs(response))
+        normalized_response -= normalized_response.mean()
+        normalized_response /= normalized_response.std()
+        start = self._coarse_search(normalized_response)
 
         def residual(params: Sequence[float]) -> FloatArray:
             x0, y0, sigma = params
             field = GaussianReceptiveField(float(x0), float(y0), float(sigma))
             _, fitted = _solve_amplitude(
-                predict(field.weights(self.grid), self.apertures), response
+                predict(field.weights(self.grid), self.apertures), normalized_response
             )
-            return fitted - response
+            return fitted - normalized_response
 
         try:
             solution = least_squares(
@@ -328,6 +332,7 @@ class PRFFitter:
             predict(field.weights(self.grid), self.apertures), response
         )
         score = _r_squared(response, fitted)
+        # Residual and Jacobian scaling cancel in the geometry covariance.
         se_x0, se_y0, se_sigma = _standard_errors(
             solution.jac, float(solution.cost), self.n_independent_frames
         )

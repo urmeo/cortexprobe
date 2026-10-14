@@ -88,7 +88,7 @@ def load_recorded_report() -> dict:
     """Reject absent or stale validation records before drawing figures."""
     path = RESULTS / "validation.json"
     try:
-        report = json.loads(path.read_text())
+        report = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as error:
         raise ValueError(f"cannot read {path}; generate the validation report first") from error
     if not isinstance(report, dict) or report.get("config_digest") != CONFIG.digest():

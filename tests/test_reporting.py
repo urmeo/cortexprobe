@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import copy
 import json
+import os
+import subprocess
+import sys
 from dataclasses import replace
 from datetime import date
 from pathlib import Path
@@ -143,6 +146,53 @@ def test_tolerated_regeneration_preserves_original_record(
     monkeypatch.setattr(report_script, "measure_recovery", lambda *args: recovery)
     assert report_script.main([]) == 0
     assert json.loads(path.read_text()) == record
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="The C locale selects ASCII on POSIX.")
+def test_report_checks_and_rewrites_utf8_in_ascii_locale(
+    report_script, record, monkeypatch, tmp_path
+):
+    path, _ = prepare_run(report_script, record, monkeypatch, tmp_path)
+    document = tmp_path / "docs" / "validation.md"
+    original_report = path.read_bytes()
+    original_document = document.read_bytes()
+    command = """
+import importlib.util
+import json
+import locale
+import sys
+from pathlib import Path
+
+assert locale.getpreferredencoding(False).lower() in ("ascii", "us-ascii", "ansi_x3.4-1968")
+script_path, root = map(Path, sys.argv[1:])
+sys.path.insert(0, str(script_path.parent))
+spec = importlib.util.spec_from_file_location("report", script_path)
+report = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(report)
+report.ROOT = root
+report.RESULTS = root / "results"
+record = json.loads((report.RESULTS / "validation.json").read_text(encoding="utf-8"))
+for section in ("recovery", "uncertainty", "cross_validation"):
+    setattr(report, f"measure_{section}", lambda *args, name=section: record[name])
+assert report.main(["--check"]) == 0
+assert report.main([]) == 0
+"""
+    environment = dict(os.environ, LC_ALL="C", PYTHONCOERCECLOCALE="0", PYTHONUTF8="0")
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            command,
+            str(ROOT / "scripts/generate_validation_report.py"),
+            str(tmp_path),
+        ],
+        env=environment,
+        capture_output=True,
+        timeout=60,
+    )
+    assert result.returncode == 0, result.stderr.decode("utf-8", errors="replace")
+    assert json.loads(path.read_bytes()) == json.loads(original_report)
+    assert document.read_bytes() == original_document
 
 
 @pytest.mark.parametrize("separate_runtime", [False, True])
