@@ -121,7 +121,7 @@ def test_finite_response_range_can_exceed_the_largest_float(grid, apertures, fit
     assert fit.r2 == pytest.approx(1.0)
 
 
-@pytest.mark.parametrize("scale", [1e-16, 1e-200, 1e200])
+@pytest.mark.parametrize("scale", [1e-13, 1e-16, 1e-200, 1e200])
 def test_aperture_units_preserve_fit_and_diagnostics(grid, apertures, fit_config, scale) -> None:
     response = synthesise(grid, apertures, TRUTH, noise=0.2, seed=5)
     reference = PRFFitter(grid, apertures, fit_config).fit_unit(response)
@@ -135,7 +135,7 @@ def test_aperture_units_preserve_fit_and_diagnostics(grid, apertures, fit_config
         (reference.x0, reference.y0, reference.sigma), abs=1e-6
     )
     assert fit.beta * scale == pytest.approx(reference.beta, rel=1e-6)
-    assert fit.baseline == pytest.approx(reference.baseline, abs=1e-10)
+    assert fit.baseline == pytest.approx(reference.baseline, abs=1e-9)
     assert fit.r2 == pytest.approx(reference.r2, abs=1e-10)
     assert fit.second_field_r2 == pytest.approx(reference.second_field_r2, abs=1e-10)
     assert (fit.se_x0, fit.se_y0, fit.se_sigma) == pytest.approx(

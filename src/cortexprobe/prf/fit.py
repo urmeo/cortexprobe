@@ -112,40 +112,54 @@ class UnitFit:
         return estimate - critical * error, estimate + critical * error
 
 
-def _solve_amplitude(prediction: FloatArray, response: FloatArray) -> tuple[FloatArray, FloatArray]:
-    """Least-squares fit of ``response ~ beta * prediction + baseline``."""
-    prediction_scale = float(np.max(np.abs(prediction))) or 1.0
-    normalized_prediction = prediction / prediction_scale
-    prediction_mean = float(normalized_prediction.mean())
-    normalized_prediction -= prediction_mean
-    centered_scale = float(np.max(np.abs(normalized_prediction))) or 1.0
-    normalized_prediction /= centered_scale
+def _restore_amplitude(beta: float, response_scale: float, aperture_scale: float) -> float:
+    """Convert amplitude units without overflowing an intermediate scale ratio."""
+    response_mantissa, response_exponent = math.frexp(response_scale)
+    aperture_mantissa, aperture_exponent = math.frexp(aperture_scale)
+    try:
+        return math.ldexp(
+            beta * response_mantissa / aperture_mantissa,
+            response_exponent - aperture_exponent,
+        )
+    except OverflowError:
+        return math.copysign(float("inf"), beta)
 
+
+def _solve_amplitude(
+    prediction: FloatArray, response: FloatArray, *, aperture_scale: float = 1.0
+) -> tuple[FloatArray, FloatArray]:
+    """Least-squares amplitude and baseline, with beta in the original aperture units."""
+    design = np.column_stack([prediction, np.ones_like(prediction)])
     # Shift before scaling to retain small variations around a large baseline.
     response_anchor = float(response[0])
     with np.errstate(over="ignore"):
         shifted_response = response - response_anchor
-    if not np.isfinite(shifted_response).all():
+    finite_shift = np.isfinite(shifted_response).all()
+    response_peak = float(np.max(np.abs(response)))
+    precision_limit = math.sqrt(np.finfo(np.float64).eps)
+    if finite_shift and response_peak > 0.0:
+        relative_variation = float(np.max(np.abs(shifted_response))) / response_peak
+        if relative_variation >= precision_limit:
+            try:
+                with np.errstate(over="ignore", invalid="ignore"):
+                    coefficients, *_ = np.linalg.lstsq(design, response, rcond=None)
+                    fitted = design @ coefficients
+                if np.isfinite(coefficients).all() and np.isfinite(fitted).all():
+                    if aperture_scale != 1.0:
+                        coefficients[0] = _restore_amplitude(
+                            float(coefficients[0]), 1.0, aperture_scale
+                        )
+                    return coefficients, fitted
+            except np.linalg.LinAlgError:
+                pass
+
+    if not finite_shift:
         response_anchor = 0.0
         shifted_response = response
     response_scale = float(np.max(np.abs(shifted_response))) or 1.0
-    design = np.column_stack([normalized_prediction, np.ones_like(prediction)])
     coefficients, *_ = np.linalg.lstsq(design, shifted_response / response_scale, rcond=None)
-
-    # Combine scale exponents without overflowing an intermediate ratio.
-    response_mantissa, response_exponent = math.frexp(response_scale)
-    prediction_mantissa, prediction_exponent = math.frexp(prediction_scale)
-    centered_mantissa, centered_exponent = math.frexp(centered_scale)
-    try:
-        beta = math.ldexp(
-            float(coefficients[0]) * response_mantissa / prediction_mantissa / centered_mantissa,
-            response_exponent - prediction_exponent - centered_exponent,
-        )
-    except OverflowError:
-        beta = math.copysign(float("inf"), coefficients[0])
-
-    baseline_offset = coefficients[1] - coefficients[0] * prediction_mean / centered_scale
-    offsets = np.concatenate(([baseline_offset], design @ coefficients))
+    beta = _restore_amplitude(float(coefficients[0]), response_scale, aperture_scale)
+    offsets = np.concatenate(([coefficients[1]], design @ coefficients))
     with np.errstate(over="ignore", invalid="ignore"):
         restored = response_anchor + response_scale * offsets
         if not np.isfinite(restored).all():
@@ -249,11 +263,18 @@ class PRFFitter:
         self.grid = grid
         self._apertures = apertures.astype(np.float64, copy=True)
         self._apertures.setflags(write=False)
+        self._aperture_scale = float(np.max(np.abs(self._apertures))) or 1.0
+        self._fit_apertures = (
+            self._apertures
+            if self._aperture_scale == 1.0
+            else self._apertures / self._aperture_scale
+        )
+        self._fit_apertures.setflags(write=False)
         self.config = config
         self._check_sigma_ceiling()
         self.n_independent_frames = _count_distinct_frames(self.apertures)
         self._candidates = tuple(self._build_candidates())
-        self._predictions = design_matrix(self.candidates, grid, self.apertures)
+        self._predictions = design_matrix(self.candidates, grid, self._fit_apertures)
 
     def _check_sigma_ceiling(self) -> None:
         """Check sampled circular-field mass at the centered sigma ceiling.
@@ -339,12 +360,8 @@ class PRFFitter:
             return float("nan")
         residual = response - fitted
         design = np.column_stack([fitted, np.ones_like(fitted)])
-        candidate_scale = float(np.max(np.abs(self._predictions)))
-        if candidate_scale == 0.0:
-            return 0.0
-        candidates = self._predictions / candidate_scale
-        coefficients, *_ = np.linalg.lstsq(design, candidates, rcond=None)
-        perpendicular = candidates - design @ coefficients
+        coefficients, *_ = np.linalg.lstsq(design, self._predictions, rcond=None)
+        perpendicular = self._predictions - design @ coefficients
         norms = np.sum(perpendicular**2, axis=0)
         usable = norms > 1e-12
         if not usable.any():
@@ -378,7 +395,7 @@ class PRFFitter:
             x0, y0, sigma = params
             field = GaussianReceptiveField(float(x0), float(y0), float(sigma))
             _, fitted = _solve_amplitude(
-                predict(field.weights(self.grid), self.apertures), normalized_response
+                predict(field.weights(self.grid), self._fit_apertures), normalized_response
             )
             return fitted - normalized_response
 
@@ -395,7 +412,9 @@ class PRFFitter:
         x0, y0, sigma = (float(value) for value in solution.x)
         field = GaussianReceptiveField(x0, y0, sigma)
         coefficients, fitted = _solve_amplitude(
-            predict(field.weights(self.grid), self.apertures), response
+            predict(field.weights(self.grid), self._fit_apertures),
+            response,
+            aperture_scale=self._aperture_scale,
         )
         if not np.isfinite(coefficients).all() or not np.isfinite(fitted).all():
             return UnitFit.failed()
