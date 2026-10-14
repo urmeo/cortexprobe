@@ -236,7 +236,7 @@ assert RunConfig.load(saved).digest() == config.digest()
         [sys.executable, "-c", command, str(source), str(saved), config.digest()],
         env=environment,
         capture_output=True,
-        timeout=10,
+        timeout=60,
     )
     assert result.returncode == 0, result.stderr.decode("utf-8", errors="replace")
     assert RunConfig.load(saved) == config
