@@ -1,7 +1,9 @@
 # Figures
 
-The editable [SVG](pipeline.svg), [PNG preview](pipeline.png), and responsive
-HTML in the documentation share the pipeline. Update them together.
+The [Figma source](https://www.figma.com/design/SLnekFxRy403s5HqmehcOz?node-id=9-2),
+editable [SVG](pipeline.svg), and [PNG](pipeline.png) contain the same signal flow.
+The README and desktop documentation use the PNG. Smaller screens use a
+readable HTML version of the same steps. Update these together.
 
 The other 11 figures are scientific plots generated with Matplotlib from the
 committed configuration, recorded tables, and stated synthetic demonstrations.

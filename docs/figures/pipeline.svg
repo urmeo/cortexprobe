@@ -1,113 +1,101 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="1180" viewBox="0 0 1280 1180" role="img" aria-labelledby="title description">
-  <title id="title">CortexProbe pipeline: prepare frames, fit a field, and test predictions</title>
-  <desc id="description">Matched aperture masks, synthetic responses, and groups feed two independent paths. Fit all retained frames for the field estimate. Separately, hold out each usable group, fit the other groups, freeze all five parameters, predict with held-out masks, and score against held-out responses. Solve amplitude and baseline at every candidate and trial geometry. Report the mean and sample SD of finite fold R squared scores. The all-frame fit does not initialize validation fits. Held-out scores do not determine acceptance. Examples and recorded results are synthetic.</desc>
-  <defs>
-    <style>
-    text { font-family: Arial, Helvetica, sans-serif; fill: #e7edef; }
-    .title { font-size: 32px; font-weight: 700; }
-    .heading { font-size: 26px; font-weight: 700; }
-    .step { font-size: 23px; font-weight: 700; }
-    .body { font-size: 21px; }
-    .note { font-size: 20px; }
-    .muted { fill: #a8b5bd; }
-    .cyan { fill: #55c4e0; }
-    .held-out { fill: #f08b79; }
-    .panel { fill: #1b2327; stroke: #34424a; stroke-width: 1.5; }
-    .card { fill: #1b2327; stroke: #60757f; stroke-width: 1.5; }
-    .result { stroke: #55c4e0; }
-    .flow { fill: none; stroke: #55c4e0; stroke-width: 2; stroke-linejoin: round; }
-  </style>
-    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M0 0 10 5 0 10Z" fill="#55c4e0" />
-    </marker>
-  </defs>
-  <rect width="1280" height="1180" fill="#14191c" />
-  <text x="40" y="64" class="title">CortexProbe pipeline</text>
-  <text x="40" y="102" class="body muted">Prepare matched frames. Fit a field. Test predictions.</text>
-  <g aria-label="Prepare matched frames">
-    <rect x="32" y="132" width="1216" height="190" rx="8" class="panel" />
-    <text x="56" y="174" class="heading">Prepare matched frames</text>
-    <path d="M418 202V298M822 202V298" stroke="#34424a" />
-    <text x="56" y="220" class="step">Build masks</text>
-    <text x="56" y="254" class="note muted">Bar · wedge · ring</text>
-    <text x="56" y="281" class="note muted">Group + prune frames.</text>
-    <text x="442" y="220" class="step">Create responses</text>
-    <text x="442" y="254" class="note muted">Gaussian overlap × amplitude</text>
-    <text x="442" y="281" class="note muted">+ baseline; optional seeded noise.</text>
-    <text x="846" y="220" class="step">Align inputs</text>
-    <text x="846" y="254" class="note muted">One mask, response + group</text>
-    <text x="846" y="281" class="note muted">per retained frame</text>
-    <text x="846" y="308" class="note muted">Check shapes + bounds.</text>
-  </g>
-  <path d="M640 322V338M640 368V380" class="flow" />
-  <text x="640" y="360" class="note cyan" text-anchor="middle">Same inputs · separate fits</text>
-  <path d="M320 406V380H960V406" class="flow" marker-start="url(#arrow)" marker-end="url(#arrow)" />
-  <rect x="32" y="414" width="576" height="650" rx="8" class="panel" />
-  <path d="M42 414H598" class="flow" />
-  <text x="56" y="458" class="heading">Estimate the field</text>
-  <text x="56" y="490" class="body muted">Use all retained frames</text>
-  <rect x="672" y="414" width="576" height="650" rx="8" class="panel" />
-  <path d="M682 414H1238" class="flow" />
-  <text x="696" y="458" class="heading">Test predictions</text>
-  <text x="696" y="490" class="body muted">Repeat for each usable group</text>
-  <g aria-label="Search candidates on all retained frames">
-    <rect x="56" y="514" width="528" height="102" rx="8" class="card" />
-    <text x="80" y="552" class="step">Search candidates</text>
-    <text x="80" y="590" class="body muted">Center + width grid</text>
-  </g>
-  <path d="M320 616V634" class="flow" marker-end="url(#arrow)" />
-  <g aria-label="Refine the all-frame fit">
-    <rect x="56" y="642" width="528" height="168" rx="8" class="card" />
-    <text x="80" y="680" class="step">Refine the fit</text>
-    <text x="80" y="718" class="body muted">SciPy refinement within bounds</text>
-    <text x="80" y="765" class="note muted">Solve amplitude + baseline at every</text>
-    <text x="80" y="793" class="note muted">candidate and trial geometry.</text>
-    <path d="M80 738H560" stroke="#34424a" />
-  </g>
-  <path d="M320 810V828" class="flow" marker-end="url(#arrow)" />
-  <g aria-label="Read the field estimate and checks">
-    <rect x="56" y="836" width="528" height="212" rx="8" class="card result" />
-    <text x="80" y="874" class="step">Field estimate + checks</text>
-    <text x="80" y="1010" class="note muted">In-sample R² · local uncertainty · residual checks</text>
-    <g aria-label="Gaussian center and width schematic" transform="translate(80 902)">
-      <circle cx="50" cy="50" r="36" fill="#55c4e0" opacity="0.06" />
-      <circle cx="50" cy="50" r="25" fill="#55c4e0" opacity="0.12" />
-      <circle cx="50" cy="50" r="13" fill="#55c4e0" opacity="0.25" />
-      <circle cx="50" cy="50" r="36" fill="none" stroke="#55c4e0" stroke-opacity="0.35" />
-      <circle cx="50" cy="50" r="25" fill="none" stroke="#55c4e0" stroke-opacity="0.6" />
-      <path d="M42 50h16M50 42v16M50 78h25m-3-3 3 3-3 3" fill="none" stroke="#55c4e0" stroke-width="1.5" />
-    </g>
-    <text x="198" y="936" class="body muted">Center (x, y), width,</text>
-    <text x="198" y="968" class="body muted">amplitude + baseline</text>
-  </g>
-  <g aria-label="Hold out one complete group">
-    <rect x="696" y="514" width="528" height="110" rx="8" class="card" />
-    <text x="720" y="552" class="step">Hold out one group</text>
-    <text x="720" y="582" class="note muted">Train on the other groups.</text>
-    <text x="720" y="610" class="note muted">Keep held-out data separate.</text>
-  </g>
-  <path d="M960 624V642" class="flow" marker-end="url(#arrow)" />
-  <g aria-label="Fit training frames independently">
-    <rect x="696" y="650" width="528" height="128" rx="8" class="card" />
-    <text x="720" y="688" class="step">Fit training frames</text>
-    <text x="720" y="720" class="note muted">Candidate grid → bounded refinement.</text>
-    <text x="720" y="754" class="note muted">Solve amplitude + baseline at every geometry.</text>
-  </g>
-  <path d="M960 778V796" class="flow" marker-end="url(#arrow)" />
-  <g aria-label="Predict from held-out masks with fixed parameters">
-    <rect x="696" y="804" width="528" height="106" rx="8" class="card" />
-    <text x="720" y="842" class="step">Predict held-out frames</text>
-    <text x="720" y="872" class="note muted">Keep all five parameters fixed.</text>
-    <text x="720" y="898" class="note held-out">Held-out masks → prediction</text>
-  </g>
-  <path d="M960 910V928" class="flow" marker-end="url(#arrow)" />
-  <g aria-label="Score only against held-out responses">
-    <rect x="696" y="936" width="528" height="112" rx="8" class="card result" />
-    <text x="720" y="974" class="step">Score predictions</text>
-    <text x="720" y="1002" class="note held-out">Held-out responses → scoring only.</text>
-    <text x="720" y="1030" class="note muted">Mean + sample SD of finite fold R².</text>
-  </g>
-  <text x="40" y="1100" class="note muted">The all-frame fit does not initialize validation fits.</text>
-  <text x="40" y="1129" class="note muted">Held-out scores do not determine acceptance.</text>
-  <text x="40" y="1158" class="note muted">Examples and recorded results are synthetic. No human-data or neural-network evaluation.</text>
+<svg width="1600" height="1232" viewBox="0 0 1600 1232" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="pipeline-title pipeline-description">
+<title id="pipeline-title">CortexProbe signal flow</title>
+<desc id="pipeline-description">Grouped aperture masks and synthetic responses form matched frames. Independent paths estimate a Gaussian field from all retained frames and validate training-fold models. Held-out masks enter fixed-parameter prediction; held-out responses enter scoring. Outputs include field parameters, in-sample fit checks, finite-fold R² summaries, and validation coverage.</desc>
+<g id="cortexprobe-signal-flow">
+<rect width="1600" height="1232" fill="#14191C"/>
+<text id="Signal flow title" fill="#E7EDEF" style="white-space: pre" xml:space="preserve" font-family="Inter, Arial, Helvetica, sans-serif" font-size="36" font-weight="600" letter-spacing="0em"><tspan x="64" y="65.0909">CORTEXPROBE &#xb7; SIGNAL FLOW</tspan></text>
+<text id="Core tools" fill="#A8B5BD" style="white-space: pre" xml:space="preserve" font-family="Inter, Arial, Helvetica, sans-serif" font-size="24" letter-spacing="0em"><tspan x="1271.18" y="66.7273">Python &#xb7; NumPy &#xb7; SciPy</tspan></text>
+<text id="Pipeline description" fill="#A8B5BD" style="white-space: pre" xml:space="preserve" font-family="Inter, Arial, Helvetica, sans-serif" font-size="24" letter-spacing="0em"><tspan x="64" y="108.727">Build matched frames. Estimate a field. Test held-out groups.</tspan></text>
+<rect id="Signal flow panel" x="32.75" y="136.75" width="1534.5" height="990.5" rx="9.25" fill="#1B2327" stroke="#34424A" stroke-width="1.5"/>
+<g id="Build masks">
+<rect x="65" y="165" width="430" height="194" rx="7" fill="#1B2327"/>
+<rect x="65" y="165" width="430" height="194" rx="7" stroke="#788B95" stroke-width="2"/>
+<text id="Build masks / title" fill="#E7EDEF" style="white-space: pre" xml:space="preserve" font-family="Inter, Arial, Helvetica, sans-serif" font-size="28" font-weight="600" letter-spacing="0em"><tspan x="88" y="213.182">Build aperture masks</tspan></text>
+<text id="Build masks / details" fill="#A8B5BD" style="white-space: pre" xml:space="preserve" font-family="Inter, Arial, Helvetica, sans-serif" font-size="24" letter-spacing="0em"><tspan x="88" y="254.727">Bar &#xb7; wedge &#xb7; ring&#10;</tspan><tspan x="88" y="286.727">Group return sweeps.&#10;</tspan><tspan x="88" y="318.727">Prune cross-group overlap.</tspan></text>
+</g>
+<g id="Synthetic responses">
+<rect x="585" y="165" width="430" height="194" rx="7" fill="#1B2327"/>
+<rect x="585" y="165" width="430" height="194" rx="7" stroke="#788B95" stroke-width="2"/>
+<text id="Synthetic responses / title" fill="#E7EDEF" style="white-space: pre" xml:space="preserve" font-family="Inter, Arial, Helvetica, sans-serif" font-size="28" font-weight="600" letter-spacing="0em"><tspan x="608" y="213.182">Create responses</tspan></text>
+<text id="Synthetic responses / details" fill="#A8B5BD" style="white-space: pre" xml:space="preserve" font-family="Inter, Arial, Helvetica, sans-serif" font-size="24" letter-spacing="0em"><tspan x="608" y="254.727">Gaussian overlap&#10;</tspan><tspan x="608" y="286.727">&#xd7; amplitude + baseline&#10;</tspan><tspan x="608" y="318.727">+ optional seeded noise</tspan></text>
+</g>
+<g id="Aligned frames">
+<rect x="1105" y="165" width="430" height="194" rx="7" fill="#1B2327"/>
+<rect x="1105" y="165" width="430" height="194" rx="7" stroke="#55C4E0" stroke-width="2"/>
+<text id="Aligned frames / title" fill="#E7EDEF" style="white-space: pre" xml:space="preserve" font-family="Inter, Arial, Helvetica, sans-serif" font-size="28" font-weight="600" letter-spacing="0em"><tspan x="1128" y="213.182">Align frames</tspan></text>
+<text id="Aligned frames / details" fill="#A8B5BD" style="white-space: pre" xml:space="preserve" font-family="Inter, Arial, Helvetica, sans-serif" font-size="24" letter-spacing="0em"><tspan x="1128" y="254.727">Mask + response + group&#10;</tspan><tspan x="1128" y="286.727">One row per retained frame</tspan></text>
+</g>
+<g id="All-frame fitting">
+<rect x="65" y="445" width="670" height="206" rx="7" fill="#1B2327"/>
+<rect x="65" y="445" width="670" height="206" rx="7" stroke="#55C4E0" stroke-width="2"/>
+<text id="All-frame fitting / title" fill="#E7EDEF" style="white-space: pre" xml:space="preserve" font-family="Inter, Arial, Helvetica, sans-serif" font-size="28" font-weight="600" letter-spacing="0em"><tspan x="88" y="493.182">Fit all retained frames</tspan></text>
+<text id="All-frame fitting / details" fill="#A8B5BD" style="white-space: pre" xml:space="preserve" font-family="Inter, Arial, Helvetica, sans-serif" font-size="24" letter-spacing="0em"><tspan x="88" y="534.727">Candidate grid &#x2192; bounded refinement&#10;</tspan><tspan x="88" y="566.727">Amplitude + baseline at every geometry</tspan></text>
+<text id="Refinement detail" fill="#A8B5BD" style="white-space: pre" xml:space="preserve" font-family="Inter, Arial, Helvetica, sans-serif" font-size="22" letter-spacing="0em"><tspan x="88" y="613">SciPy refines center + width.</tspan></text>
+</g>
+<g id="Field estimate">
+<rect x="865" y="445" width="670" height="206" rx="7" fill="#1B2327"/>
+<rect x="865" y="445" width="670" height="206" rx="7" stroke="#55C4E0" stroke-width="2"/>
+<text id="Field estimate / title" fill="#E7EDEF" style="white-space: pre" xml:space="preserve" font-family="Inter, Arial, Helvetica, sans-serif" font-size="28" font-weight="600" letter-spacing="0em"><tspan x="888" y="493.182">Field estimate + checks</tspan></text>
+<text id="Field estimate / details" fill="#A8B5BD" style="white-space: pre" xml:space="preserve" font-family="Inter, Arial, Helvetica, sans-serif" font-size="24" letter-spacing="0em"><tspan x="888" y="534.727">Center &#xb7; width &#xb7; amplitude &#xb7; baseline&#10;</tspan><tspan x="888" y="566.727">In-sample R&#xb2; &#xb7; local uncertainty &#xb7; residual checks</tspan></text>
+<rect id="Acceptance separator" x="888" y="582" width="624" height="1" fill="#34424A"/>
+<text id="Acceptance rule" fill="#A8B5BD" style="white-space: pre" xml:space="preserve" font-family="Inter, Arial, Helvetica, sans-serif" font-size="22" letter-spacing="0em"><tspan x="888" y="613.5">Accept: converged &#xb7; R&#xb2; meets threshold&#10;</tspan><tspan x="888" y="640.5">positive amplitude &#xb7; sigma off its bounds</tspan></text>
+</g>
+<text id="Independent branch label" fill="#55C4E0" style="white-space: pre" xml:space="preserve" font-family="Inter, Arial, Helvetica, sans-serif" font-size="22" letter-spacing="0em"><tspan x="448" y="705">Same inputs &#xb7; independent fits</tspan></text>
+<text id="Group iteration label" fill="#55C4E0" style="white-space: pre" xml:space="preserve" font-family="Inter, Arial, Helvetica, sans-serif" font-size="22" letter-spacing="0em"><tspan x="448" y="763">Repeat for each usable group</tspan></text>
+<g id="Held-out group">
+<rect x="65" y="785" width="318" height="222" rx="7" fill="#1B2327"/>
+<rect x="65" y="785" width="318" height="222" rx="7" stroke="#F08B79" stroke-width="2"/>
+<text id="Held-out group / title" fill="#E7EDEF" style="white-space: pre" xml:space="preserve" font-family="Inter, Arial, Helvetica, sans-serif" font-size="28" font-weight="600" letter-spacing="0em"><tspan x="88" y="833.182">Hold out one group</tspan></text>
+<text id="Held-out group / details" fill="#A8B5BD" style="white-space: pre" xml:space="preserve" font-family="Inter, Arial, Helvetica, sans-serif" font-size="24" letter-spacing="0em"><tspan x="88" y="874.727">Exclude one group.&#10;</tspan><tspan x="88" y="906.727">Fit the other groups.</tspan></text>
+</g>
+<g id="Training-only fitting">
+<rect x="449" y="785" width="318" height="222" rx="7" fill="#1B2327"/>
+<rect x="449" y="785" width="318" height="222" rx="7" stroke="#55C4E0" stroke-width="2"/>
+<text id="Training-only fitting / title" fill="#E7EDEF" style="white-space: pre" xml:space="preserve" font-family="Inter, Arial, Helvetica, sans-serif" font-size="26" font-weight="600" letter-spacing="0em"><tspan x="472" y="832.455">Fit training frames</tspan></text>
+<text id="Training-only fitting / details" fill="#A8B5BD" style="white-space: pre" xml:space="preserve" font-family="Inter, Arial, Helvetica, sans-serif" font-size="24" letter-spacing="0em"><tspan x="472" y="874.727">Candidate grid &#x2192;&#10;</tspan><tspan x="472" y="906.727">bounded refinement&#10;</tspan><tspan x="472" y="938.727">Solve amplitude +&#10;</tspan><tspan x="472" y="970.727">baseline at each trial</tspan></text>
+</g>
+<g id="Fixed-parameter prediction">
+<rect x="833" y="785" width="318" height="222" rx="7" fill="#1B2327"/>
+<rect x="833" y="785" width="318" height="222" rx="7" stroke="#55C4E0" stroke-width="2"/>
+<text id="Fixed-parameter prediction / title" fill="#E7EDEF" style="white-space: pre" xml:space="preserve" font-family="Inter, Arial, Helvetica, sans-serif" font-size="28" font-weight="600" letter-spacing="0em"><tspan x="856" y="833.182">Predict held-out</tspan></text>
+<text id="Fixed-parameter prediction / details" fill="#A8B5BD" style="white-space: pre" xml:space="preserve" font-family="Inter, Arial, Helvetica, sans-serif" font-size="24" letter-spacing="0em"><tspan x="856" y="874.727">Freeze all five&#10;</tspan><tspan x="856" y="906.727">parameters.&#10;</tspan><tspan x="856" y="938.727">Use held-out masks.&#10;</tspan><tspan x="856" y="970.727">Predict their responses.</tspan></text>
+</g>
+<g id="Held-out scoring">
+<rect x="1217" y="785" width="318" height="222" rx="7" fill="#1B2327"/>
+<rect x="1217" y="785" width="318" height="222" rx="7" stroke="#55C4E0" stroke-width="2"/>
+<text id="Held-out scoring / title" fill="#E7EDEF" style="white-space: pre" xml:space="preserve" font-family="Inter, Arial, Helvetica, sans-serif" font-size="26" font-weight="600" letter-spacing="0em"><tspan x="1240" y="832.455">Validation summary</tspan></text>
+<text id="Held-out scoring / details" fill="#A8B5BD" style="white-space: pre" xml:space="preserve" font-family="Inter, Arial, Helvetica, sans-serif" font-size="24" letter-spacing="0em"><tspan x="1240" y="874.727">Finite fold R&#xb2;:&#10;</tspan><tspan x="1240" y="906.727">mean + sample SD&#10;</tspan><tspan x="1240" y="938.727">Valid / requested folds&#10;</tspan><tspan x="1240" y="970.727">Complete / incomplete</tspan></text>
+</g>
+<text id="Acceptance and validation" fill="#A8B5BD" style="white-space: pre" xml:space="preserve" font-family="Inter, Arial, Helvetica, sans-serif" font-size="22" letter-spacing="0em"><tspan x="64" y="1175">Held-out scores do not decide acceptance.</tspan></text>
+<text id="Scope" fill="#A8B5BD" style="white-space: pre" xml:space="preserve" font-family="Inter, Arial, Helvetica, sans-serif" font-size="22" letter-spacing="0em"><tspan x="64" y="1211">Examples and recorded results are synthetic. No human-data or neural-network evaluation.</tspan></text>
+<path id="Masks to responses" d="M496 262H584" stroke="#55C4E0" stroke-width="2.5"/>
+<path id="Masks to responses / arrow" d="M584 262L572 256V268L584 262Z" fill="#55C4E0"/>
+<text id="Mask signal label" fill="#55C4E0" style="white-space: pre" xml:space="preserve" font-family="Inter, Arial, Helvetica, sans-serif" font-size="20" letter-spacing="0em"><tspan x="504" y="251.273">masks</tspan></text>
+<path id="Responses to matched frames" d="M1016 262H1104" stroke="#55C4E0" stroke-width="2.5"/>
+<path id="Responses to matched frames / arrow" d="M1104 262L1092 256V268L1104 262Z" fill="#55C4E0"/>
+<text id="Matched signal label" fill="#55C4E0" style="white-space: pre" xml:space="preserve" font-family="Inter, Arial, Helvetica, sans-serif" font-size="20" letter-spacing="0em"><tspan x="1024" y="251.273">pairs</tspan></text>
+<path id="Matched inputs to all-frame fitting" d="M1320 360V402H400V444" stroke="#55C4E0" stroke-width="2.5"/>
+<path id="Matched inputs to all-frame fitting / arrow" d="M400 444L394 432H406L400 444Z" fill="#55C4E0"/>
+<path id="Independent validation branch" d="M1320 402H1552V716H224V784" stroke="#55C4E0" stroke-width="2.5"/>
+<path id="Independent validation branch / arrow" d="M224 784L218 772H230L224 784Z" fill="#55C4E0"/>
+<path id="Full fit to estimate" d="M736 548H864" stroke="#55C4E0" stroke-width="2.5"/>
+<path id="Full fit to estimate / arrow" d="M864 548L852 542V554L864 548Z" fill="#55C4E0"/>
+<text id="Estimate signal label" fill="#55C4E0" style="white-space: pre" xml:space="preserve" font-family="Inter, Arial, Helvetica, sans-serif" font-size="22" letter-spacing="0em"><tspan x="776" y="539">fit</tspan></text>
+<path id="Training subset" d="M384 896H448" stroke="#55C4E0" stroke-width="2.5"/>
+<path id="Training subset / arrow" d="M448 896L436 890V902L448 896Z" fill="#55C4E0"/>
+<text id="Training signal label" fill="#55C4E0" style="white-space: pre" xml:space="preserve" font-family="Inter, Arial, Helvetica, sans-serif" font-size="20" letter-spacing="0em"><tspan x="388" y="887.273">train</tspan></text>
+<path id="Freeze training model" d="M768 896H832" stroke="#55C4E0" stroke-width="2.5"/>
+<path id="Freeze training model / arrow" d="M832 896L820 890V902L832 896Z" fill="#55C4E0"/>
+<text id="Frozen model signal label" fill="#55C4E0" style="white-space: pre" xml:space="preserve" font-family="Inter, Arial, Helvetica, sans-serif" font-size="18" letter-spacing="0em"><tspan x="772" y="886.545">model</tspan></text>
+<path id="Held-out predictions to scoring" d="M1152 896H1216" stroke="#55C4E0" stroke-width="2.5"/>
+<path id="Held-out predictions to scoring / arrow" d="M1216 896L1204 890V902L1216 896Z" fill="#55C4E0"/>
+<path id="Held-out mask bypass" d="M224 1008V1054H992V1008" stroke="#F08B79" stroke-width="2.5"/>
+<path id="Held-out mask bypass / arrow" d="M992 1008L986 1020H998L992 1008Z" fill="#F08B79"/>
+<text id="Held-out masks signal label" fill="#F08B79" style="white-space: pre" xml:space="preserve" font-family="Inter, Arial, Helvetica, sans-serif" font-size="22" letter-spacing="0em"><tspan x="480" y="1041">held-out masks</tspan></text>
+<path id="Held-out response bypass" d="M224 1054V1098H1376V1008" stroke="#F08B79" stroke-width="2.5"/>
+<path id="Held-out response bypass / arrow" d="M1376 1008L1370 1020H1382L1376 1008Z" fill="#F08B79"/>
+<text id="Held-out responses signal label" fill="#F08B79" style="white-space: pre" xml:space="preserve" font-family="Inter, Arial, Helvetica, sans-serif" font-size="22" letter-spacing="0em"><tspan x="704" y="1085">held-out responses</tspan></text>
+<circle id="Independent input fork" cx="1320" cy="402" r="3.5" fill="#55C4E0"/>
+<circle id="Held-out data fork" cx="224" cy="1054" r="3.5" fill="#F08B79"/>
+</g>
 </svg>

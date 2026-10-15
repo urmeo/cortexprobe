@@ -5,7 +5,7 @@ examples and recorded experiments use synthetic responses.
 
 [![Prepare matched frames, then follow two separate paths: estimate a field from all frames, and test independent training fits using held-out masks for prediction and held-out responses for scoring.](figures/pipeline.png)](figures/pipeline.png)
 
-[Editable SVG](figures/pipeline.svg) · [Figure guide](figures/) · [Videos](media/)
+[Figma source](https://www.figma.com/design/SLnekFxRy403s5HqmehcOz?node-id=9-2) · [Editable SVG](figures/pipeline.svg) · [Figure guide](figures/) · [Videos](media/)
 
 ## Prepare the inputs
 

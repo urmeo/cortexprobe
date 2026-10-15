@@ -58,11 +58,12 @@ class SiteContent(Treeprocessor):
         self.source = source
         self.page = PAGES[source][0]
 
-    def rewrite_url(self, value: str) -> str:
+    def rewrite_url(self, value: str, base: Path | None = None) -> str:
         url = urlsplit(value)
         if url.scheme or url.netloc or not url.path:
             return value
-        target = (ROOT / self.source.parent / unquote(url.path)).resolve().relative_to(ROOT)
+        base = ROOT / self.source.parent if base is None else base
+        target = (base / unquote(url.path)).resolve().relative_to(ROOT)
         if (target / "README.md") in PAGES:
             target /= "README.md"
         destination = PAGES[target][0] if target in PAGES else target
@@ -87,7 +88,7 @@ class SiteContent(Treeprocessor):
             caption[-1].tail = f". {description}. {basis}."
 
     def add_pipeline(self, root: ET.Element) -> None:
-        """Replace the pipeline diagram with its responsive HTML counterpart."""
+        """Keep the shared diagram on desktop and readable flow steps on mobile."""
         if self.source not in (Path("README.md"), Path("docs/pipeline.md")):
             return
         for index, paragraph in enumerate(root):
@@ -97,10 +98,19 @@ class SiteContent(Treeprocessor):
             if image.get("src") != relative_url(Path("docs/figures/pipeline.png"), self.page):
                 continue
             pipeline = ET.parse(ROOT / "docs/templates/pipeline.html").getroot()
-            for asset in pipeline.iter("img"):
-                asset.set(
-                    "src", relative_url(Path("assets/pipeline") / asset.attrib["src"], self.page)
-                )
+            for asset in pipeline.iter():
+                for attribute in ("href", "src", "poster"):
+                    if attribute in asset.attrib:
+                        value = asset.attrib[attribute]
+                        asset.set(attribute, self.rewrite_url(value, ROOT))
+                        if asset.tag == "img" and attribute == "src":
+                            url = urlsplit(value)
+                            if not url.scheme and not url.netloc:
+                                width, height = image_dimensions(ROOT / unquote(url.path))
+                                asset.set("width", str(width))
+                                asset.set("height", str(height))
+                            asset.set("loading", "eager")
+                            asset.set("decoding", "async")
             root.remove(paragraph)
             root.insert(index, pipeline)
             return

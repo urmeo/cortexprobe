@@ -7,7 +7,7 @@ neural-network evaluation.**
 
 [![Matched masks, responses, and groups feed full-data fitting and separate training fits for held-out validation.](docs/figures/pipeline.png)](docs/figures/pipeline.png)
 
-[Pipeline details](docs/pipeline.md) · [Editable SVG](docs/figures/pipeline.svg) · [Documentation](https://urmeo.github.io/cortexprobe/)
+[Figma source](https://www.figma.com/design/SLnekFxRy403s5HqmehcOz?node-id=9-2) · [Editable SVG](docs/figures/pipeline.svg) · [Pipeline details](docs/pipeline.md) · [Documentation](https://urmeo.github.io/cortexprobe/)
 
 ## Run
 

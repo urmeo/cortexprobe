@@ -51,35 +51,72 @@ def test_site_builds_every_page_and_copies_assets_unchanged(docs_script, built_s
     docs_script.validate_links(built_site)
 
 
-@pytest.mark.parametrize("page", ["index.html", "docs/pipeline.html"])
-def test_pipeline_is_readable_html_with_independent_fitting_paths(docs_script, built_site, page):
+@pytest.mark.parametrize(
+    ("page", "image"),
+    [("index.html", "docs/figures/pipeline.png"), ("docs/pipeline.html", "figures/pipeline.png")],
+)
+def test_pipeline_shares_diagram_and_readable_independent_paths(
+    docs_script, built_site, page, image
+):
     html = (built_site / page).read_text()
     assert html.count('class="pipeline-view"') == 1
     assert 'aria-labelledby="pipeline-title"' in html
+    assert 'class="pipeline-diagram"' in html
+    assert 'class="pipeline-mobile"' in html
+    assert f'<a class="pipeline-diagram" href="{image}">' in html
+    assert f'src="{image}"' in html
+    width, height = docs_script.image_dimensions(docs_script.ROOT / "docs/figures/pipeline.png")
+    assert f'width="{width}"' in html
+    assert f'height="{height}"' in html
     assert "Prepare matched frames" in html
-    assert "Build masks" in html
-    assert "Create responses" in html
-    assert "Align inputs" in html
-    assert "Same inputs · separate fits" in html
+    assert "Build grouped masks" in html
+    assert "Return bar sweeps share an axis group. Prune high overlap across groups." in html
+    assert "Create synthetic responses" in html
+    assert "Gaussian overlap" in html
+    assert "amplitude + baseline." in html
+    assert "One mask, response, and group per frame." in html
+    assert "Same matched frames → independent fits" in html
     assert "Use all retained frames" in html
     assert "Hold out one group" in html
-    assert "Fit training frames" in html
-    assert html.count("Solve amplitude + baseline at every candidate and trial geometry.") == 2
-    assert "Keep all five parameters fixed." in html
-    assert "Held-out masks → prediction" in html
+    assert "Fit the other groups" in html
+    assert (
+        html.count(
+            "At every candidate and trial geometry, "
+            "solve amplitude + baseline by linear least squares."
+        )
+        == 2
+    )
+    assert "Freeze all five parameters" in html
+    assert "Held-out masks → prediction only" in html
     assert "Held-out responses → scoring only" in html
     assert "Mean + sample SD of finite fold R²." in html
-    assert "The all-frame fit does not initialize validation fits." in html
-    assert "Held-out scores do not determine acceptance." in html
+    assert "Valid / requested folds; complete / incomplete coverage." in html
+    assert "Complete means every requested fold has a finite R²." in html
+    assert "The full-data fit does not initialize the fold models." in html
+    assert "Optimizer converged; R² meets the threshold; amplitude is positive;" in html
+    assert "sigma is away from its bounds." in html
+    assert "Held-out scores do not gate acceptance." in html
     assert "Examples and recorded results are synthetic." in html
     assert "No human-data or neural-network evaluation." in html
-    assert 'src="docs/figures/pipeline.png"' not in html
-    assert 'src="figures/pipeline.png"' not in html
+    assert "assets/pipeline/docs/figures" not in html
     assert "figma.com/api/mcp/asset/" not in html
     parser = docs_script.PageLinks()
     parser.feed(html)
     stylesheet = docs_script.relative_url(Path("assets/pipeline.css"), Path(page))
     assert stylesheet in parser.links
+
+
+@pytest.mark.parametrize("source", ["README.md", "docs/pipeline.md"])
+def test_pipeline_template_links_resolve_from_repository_root(docs_script, source):
+    content = docs_script.SiteContent(Path(source))
+    expected = docs_script.relative_url(Path("docs/figures/pipeline.png"), content.page)
+    assert content.rewrite_url("docs/figures/pipeline.png?v=2#preview", docs_script.ROOT) == (
+        expected + "?v=2#preview"
+    )
+    figma = "https://www.figma.com/design/SLnekFxRy403s5HqmehcOz?node-id=9-2"
+    assert content.rewrite_url(figma, docs_script.ROOT) == figma
+    with pytest.raises(ValueError, match="not in the subpath"):
+        content.rewrite_url("../outside.png", docs_script.ROOT)
 
 
 def test_validation_preserves_tables_provenance_and_links(built_site):

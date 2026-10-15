@@ -1,98 +1,104 @@
 <section class="pipeline-view" aria-labelledby="pipeline-title">
-  <header class="pipeline-header">
-    <h2 class="pipeline-title" id="pipeline-title">CortexProbe pipeline</h2>
-    <p class="pipeline-subtitle">Prepare matched frames. Fit a field. Test predictions.</p>
-  </header>
+  <h2 class="pipeline-title" id="pipeline-title">CortexProbe signal flow</h2>
 
-  <section class="pipeline-inputs" aria-labelledby="pipeline-inputs-title">
-    <h3 id="pipeline-inputs-title">Prepare matched frames</h3>
-    <ol class="pipeline-preparation">
-      <li>
-        <h4>Build masks</h4>
-        <p>Bar · wedge · ring</p>
-        <p>Group + prune frames.</p>
-      </li>
-      <li>
-        <h4>Create responses</h4>
-        <p>Gaussian overlap × amplitude + baseline</p>
-        <p>Optional seeded noise.</p>
-      </li>
-      <li>
-        <h4>Align inputs</h4>
-        <p>One mask, response + group per retained frame</p>
-        <p>Check shapes + bounds.</p>
-      </li>
-    </ol>
-  </section>
+  <a class="pipeline-diagram" href="docs/figures/pipeline.png">
+    <img src="docs/figures/pipeline.png" alt="Grouped aperture masks and synthetic responses form matched frames. Independent paths estimate a field from all frames and test training-fold fits on held-out groups. Held-out masks enter prediction; held-out responses enter scoring. Outputs include field parameters, fit checks, finite-fold R², and validation coverage." />
+  </a>
 
-  <p class="pipeline-connection">Same inputs · separate fits</p>
-
-  <div class="pipeline-paths">
-    <section class="pipeline-path" aria-labelledby="pipeline-estimation-title">
-      <header class="pipeline-path-header">
-        <h3 id="pipeline-estimation-title">Estimate the field</h3>
-        <p>Use all retained frames</p>
-      </header>
+  <div class="pipeline-mobile">
+    <section class="pipeline-inputs" aria-labelledby="pipeline-inputs-title">
+      <h3 id="pipeline-inputs-title">Prepare matched frames</h3>
       <ol class="pipeline-steps">
         <li>
-          <h4>Search candidates</h4>
-          <p>Center + width grid</p>
+          <h4>Build grouped masks</h4>
+          <p>Bar, wedge, or ring apertures.</p>
+          <p>Return bar sweeps share an axis group. Prune high overlap across groups.</p>
         </li>
         <li>
-          <h4>Refine the fit</h4>
-          <p>SciPy refinement within bounds</p>
-          <p class="pipeline-fit-note">Solve amplitude + baseline at every candidate and trial geometry.</p>
+          <h4>Create synthetic responses</h4>
+          <p>Gaussian overlap × amplitude + baseline.</p>
+          <p>Optional seeded noise.</p>
         </li>
-        <li class="pipeline-result">
-          <h4>Field estimate + checks</h4>
-          <div class="pipeline-field">
-            <svg class="pipeline-field-sketch" viewBox="0 0 100 100" role="img" aria-label="Gaussian center and width">
-              <circle cx="50" cy="50" r="36" fill="currentColor" opacity="0.06" />
-              <circle cx="50" cy="50" r="25" fill="currentColor" opacity="0.12" />
-              <circle cx="50" cy="50" r="13" fill="currentColor" opacity="0.25" />
-              <circle cx="50" cy="50" r="36" fill="none" stroke="currentColor" stroke-opacity="0.35" />
-              <circle cx="50" cy="50" r="25" fill="none" stroke="currentColor" stroke-opacity="0.6" />
-              <path d="M42 50h16M50 42v16M50 78h25m-3-3 3 3-3 3" fill="none" stroke="currentColor" stroke-width="1.5" />
-            </svg>
-            <p>Center (x, y), width,<br />amplitude + baseline</p>
-          </div>
-          <p>In-sample R² · local uncertainty · residual checks</p>
+        <li>
+          <h4>Align retained frames</h4>
+          <p>One mask, response, and group per frame.</p>
+          <p>Check shapes and parameter bounds.</p>
         </li>
       </ol>
     </section>
 
-    <section class="pipeline-path pipeline-validation" aria-labelledby="pipeline-validation-title">
-      <header class="pipeline-path-header">
-        <h3 id="pipeline-validation-title">Test predictions</h3>
-        <p>Repeat for each usable group</p>
-      </header>
-      <ol class="pipeline-steps">
-        <li>
-          <h4>Hold out one group</h4>
-          <p>Train on the other groups. Keep held-out data separate.</p>
-        </li>
-        <li>
-          <h4>Fit training frames</h4>
-          <p>Candidate grid → bounded refinement.</p>
-          <p class="pipeline-fit-note">Solve amplitude + baseline at every candidate and trial geometry.</p>
-        </li>
-        <li>
-          <h4>Predict held-out frames</h4>
-          <p>Keep all five parameters fixed.</p>
-          <p class="pipeline-held-out">Held-out masks → prediction</p>
-        </li>
-        <li class="pipeline-result">
-          <h4>Score predictions</h4>
-          <p class="pipeline-held-out">Held-out responses → scoring only.</p>
-          <p>Mean + sample SD of finite fold R².</p>
-        </li>
-      </ol>
-    </section>
+    <p class="pipeline-connection">Same matched frames → independent fits</p>
+
+    <div class="pipeline-paths">
+      <section class="pipeline-path" aria-labelledby="pipeline-estimation-title">
+        <header class="pipeline-path-header">
+          <h3 id="pipeline-estimation-title">Full-data fit</h3>
+          <p>Use all retained frames.</p>
+        </header>
+        <ol class="pipeline-steps">
+          <li>
+            <h4>Search candidates</h4>
+            <p>Compare a grid of centers and widths.</p>
+          </li>
+          <li>
+            <h4>Refine within bounds</h4>
+            <p>SciPy least squares refines center and width.</p>
+            <p class="pipeline-fit-note">At every candidate and trial geometry, solve amplitude + baseline by linear least squares.</p>
+          </li>
+          <li class="pipeline-result">
+            <h4>Field estimate and checks</h4>
+            <p>Center (x, y), width, amplitude, and baseline.</p>
+            <p>In-sample R², local standard errors, and residual second-field gain.</p>
+          </li>
+          <li class="pipeline-result">
+            <h4>Acceptance</h4>
+            <p>Optimizer converged; R² meets the threshold; amplitude is positive; sigma is away from its bounds.</p>
+            <p>Held-out scores do not gate acceptance.</p>
+          </li>
+        </ol>
+      </section>
+
+      <section class="pipeline-path" aria-labelledby="pipeline-validation-title">
+        <header class="pipeline-path-header">
+          <h3 id="pipeline-validation-title">Grouped validation</h3>
+          <p>Repeat for each usable group.</p>
+        </header>
+        <ol class="pipeline-steps">
+          <li>
+            <h4>Hold out one group</h4>
+            <p>Keep its masks and responses separate from training.</p>
+          </li>
+          <li>
+            <h4>Fit the other groups</h4>
+            <p>Candidate grid → bounded refinement.</p>
+            <p class="pipeline-fit-note">At every candidate and trial geometry, solve amplitude + baseline by linear least squares.</p>
+          </li>
+          <li>
+            <h4>Freeze all five parameters</h4>
+            <p>Center (x, y), width, amplitude, and baseline stay fixed.</p>
+          </li>
+          <li>
+            <h4>Predict held-out frames</h4>
+            <p class="pipeline-held-out">Held-out masks → prediction only.</p>
+          </li>
+          <li>
+            <h4>Score held-out predictions</h4>
+            <p class="pipeline-held-out">Held-out responses → scoring only.</p>
+            <p>Compute R² for this group.</p>
+          </li>
+          <li class="pipeline-result">
+            <h4>Validation summary</h4>
+            <p>Mean + sample SD of finite fold R².</p>
+            <p>Valid / requested folds; complete / incomplete coverage.</p>
+            <p>Complete means every requested fold has a finite R².</p>
+          </li>
+        </ol>
+      </section>
+    </div>
+
+    <footer class="pipeline-notes">
+      <p>The full-data fit does not initialize the fold models.</p>
+      <p>Examples and recorded results are synthetic. No human-data or neural-network evaluation.</p>
+    </footer>
   </div>
-
-  <footer class="pipeline-notes">
-    <p>The all-frame fit does not initialize validation fits.</p>
-    <p>Held-out scores do not determine acceptance.</p>
-    <p>Examples and recorded results are synthetic. No human-data or neural-network evaluation.</p>
-  </footer>
 </section>
