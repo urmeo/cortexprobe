@@ -1,0 +1,17 @@
+.DS_Store
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+__pycache__/
+.venv*/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+_site/
+/results/*.json
